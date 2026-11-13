@@ -1,0 +1,30 @@
+Dragon Blast (2026-11-13): the Renut's scan-out follows present_effect_live, the in-game menu's upscaler (the SDK
+presenter's live override: 1 = bilinear, 2 = FSR 1), so switching it no longer needs a restart in the Renut.
+
+diff --git a/app/src/renut_engine/gpu/backend/present.cpp b/app/src/renut_engine/gpu/backend/present.cpp
+--- a/app/src/renut_engine/gpu/backend/present.cpp
++++ b/app/src/renut_engine/gpu/backend/present.cpp
+@@ -88,6 +88,9 @@
+ REXCVAR_DECLARE(std::string, present_effect);
+ REXCVAR_DECLARE(double, present_fsr_sharpness_reduction);
+ REXCVAR_DECLARE(double, present_cas_additional_sharpness);
++// Dragon Blast (renut/0205): the in-game menu's upscaler, as the SDK presenter reads it (0 = present_effect,
++// 1 = bilinear, 2 = FSR 1).
++REXCVAR_DECLARE(uint32_t, present_effect_live);
+ #include "host_shaders/present_cas_ps.spirv.h"
+ #include "host_shaders/present_easu_ps.spirv.h"
+ #include "host_shaders/present_rcas_ps.spirv.h"
+@@ -443,7 +446,12 @@
+ // (RecordEffectScanOut), bilinear when there is none.
+ Effect RecordEffectPrePass(VideoState &s, const PresentImage &image, uint32_t out_w, uint32_t out_h) {
+   const std::string &name = REXCVAR_GET(present_effect);
+-  const Effect effect = name == "fsr" ? Effect::kFsr : name == "cas" ? Effect::kCas : Effect::kBilinear;
++  const uint32_t live = REXCVAR_GET(present_effect_live);
++  const Effect effect = live == 2   ? Effect::kFsr
++                        : live == 1 ? Effect::kBilinear
++                        : name == "fsr" ? Effect::kFsr
++                        : name == "cas" ? Effect::kCas
++                                        : Effect::kBilinear;
+   if (effect == Effect::kBilinear || image.gamma > 0.0f)  // image.gamma: banjo_renut_diag_show_texture, as it is
+     return Effect::kBilinear;
+   const uint32_t src_w = image.source_width ? image.source_width : image.width;

@@ -362,8 +362,11 @@ final class LaunchConfig {
         defaults.add("--rb2_bt3_controls=" + "bt3".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2")));
         // 16:9 with side bars, or stretched over the whole (wider) screen; the game menu changes it live.
-        defaults.add("--present_letterbox=" + !"stretch".equals(
-                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9")));
+        final boolean stretch = "stretch".equals(
+                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9"));
+        defaults.add("--present_letterbox=" + !stretch);
+        // The Renut's scan-out has its own (renut_engine/gpu/backend/present.cpp FitFrame).
+        if (renut) defaults.add("--swordman_aspect=" + (stretch ? "stretch" : "original"));
         // Internal resolution; the presenter scales it to the screen. The Renut draws at a height (360p to 4K, its
         // glue's sa2_render_height_handheld) over the game's own 1280x720; Xenia at a percent of 720p
         // (src/rb2_resolution.h, 50-100).

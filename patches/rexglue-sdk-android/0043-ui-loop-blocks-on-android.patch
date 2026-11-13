@@ -1,0 +1,64 @@
+diff --git a/src/ui/windowed_app_context_sdl.cpp b/src/ui/windowed_app_context_sdl.cpp
+index 4acff671..c7e3e2ce 100644
+--- a/src/ui/windowed_app_context_sdl.cpp
++++ b/src/ui/windowed_app_context_sdl.cpp
+@@ -23,6 +23,11 @@
+ #include <rex/ui/flags.h>
+ #include <rex/ui/window_sdl.h>
+ 
++// Dragon Blast (0043): diagnostic for the UI thread's SDL loop (see RunMainMessageLoop).
++REXCVAR_DEFINE_BOOL(ui_loop_event_log, false, "UI",
++                    "Diagnostic: every 10 s, log how many events the UI thread's SDL loop handled, by type")
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);
++
+ namespace rex::ui {
+ 
+ SDLWindowedAppContext::~SDLWindowedAppContext() {
+@@ -85,12 +90,47 @@ void SDLWindowedAppContext::PlatformQuitFromUIThread() {
+ }
+ 
+ int SDLWindowedAppContext::RunMainMessageLoop() {
++  // Dragon Blast (0043): on Android the loop never blocked and held a core at 100% (2026-11-13, Poco X6 Pro: 96% of
++  // a mid core, mostly clock_gettime under SDL_UpdateJoysticks). SDL 3.5's SDL_WaitEventTimeoutNS pumps before each
++  // wait, the pump takes the poll sentinel out of the queue and adds it again at the end, and on Android every
++  // added event posts a lifecycle WAKE - so the wait that follows returns at once, and so on. The sentinel only
++  // ends SDL_PollEvent cycles, which this loop does not use. The "update complete" events nobody reads (the input
++  // driver takes axis, button and device events) are not generated either.
++  SDL_SetEventEnabled(SDL_EVENT_POLL_SENTINEL, false);
++  SDL_SetEventEnabled(SDL_EVENT_JOYSTICK_UPDATE_COMPLETE, false);
++  SDL_SetEventEnabled(SDL_EVENT_GAMEPAD_UPDATE_COMPLETE, false);
++  SDL_SetEventEnabled(SDL_EVENT_GAMEPAD_SENSOR_UPDATE, false);
++  SDL_SetEventEnabled(SDL_EVENT_SENSOR_UPDATE, false);
++  uint64_t log_start = SDL_GetTicks();
++  uint32_t log_total = 0;
++  std::vector<std::pair<uint32_t, uint32_t>> log_types;  // (type, count)
+   while (!HasQuitFromUIThread()) {
+     SDL_Event event;
+     if (!SDL_WaitEvent(&event)) {
+       REXLOG_ERROR("SDL_WaitEvent failed: {}", SDL_GetError());
+       return EXIT_FAILURE;
+     }
++    if (REXCVAR_GET(ui_loop_event_log)) {
++      ++log_total;
++      bool found = false;
++      for (auto& [type, count] : log_types) {
++        if (type == event.type) {
++          ++count;
++          found = true;
++          break;
++        }
++      }
++      if (!found && log_types.size() < 32) log_types.push_back({event.type, 1});
++      const uint64_t now = SDL_GetTicks();
++      if (now - log_start >= 10000) {
++        std::string line;
++        for (auto& [type, count] : log_types) line += fmt::format(" 0x{:X}:{}", type, count);
++        REXLOG_INFO("UI loop: {} events in 10 s (type:count){}", log_total, line);
++        log_start = now;
++        log_total = 0;
++        log_types.clear();
++      }
++    }
+     ProcessEvent(event);
+   }
+   return EXIT_SUCCESS;

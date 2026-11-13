@@ -1,0 +1,49 @@
+Dragon Blast (2026-11-13): the Renut's own threads get names on Android ("Renut Render", "Renut Record", "Renut
+Prebuild", "Renut Ring", "Renut Verify"). As plain std::threads they kept their parent's name, "SDLThread", and the
+app's core placement (android/native/src/thread_affinity.cpp) could not tell them from SDL's.
+
+diff --git a/app/src/renut_engine/gpu/banjo_renut_tuning.cpp b/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
+--- a/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
++++ b/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
+@@ -1367,6 +1367,9 @@
+ 
+ void OnRenderThreadStart() {
+ #if defined(__ANDROID__)
++  // Dragon Blast (renut/0206): named, so the app's core placement (thread_affinity.cpp) knows it; a std::thread
++  // otherwise keeps its parent's name ("SDLThread").
++  pthread_setname_np(pthread_self(), "Renut Render");
+   if (swordman_renut_render_thread_start != nullptr)
+     swordman_renut_render_thread_start();
+ #endif
+@@ -1391,6 +1394,12 @@
+               priority_ok ? "" : " (NOT accepted)",
+               core < 0 ? std::string("not pinned")
+                        : fmt::format("pinned to core {}{}", core, core_ok ? "" : " (NOT accepted)"));
++#elif defined(__ANDROID__)
++  // Dragon Blast (renut/0206): named for the app's core placement (at most 15 characters).
++  const std::string_view w(what);
++  pthread_setname_np(pthread_self(), w.rfind("pipeline", 0) == 0 ? "Renut Prebuild"
++                                     : w.rfind("ring", 0) == 0    ? "Renut Ring"
++                                                                  : "Renut Verify");
+ #else
+   (void)what;
+ #endif
+diff --git a/app/src/renut_engine/gpu/banjo_renut_record.cpp b/app/src/renut_engine/gpu/banjo_renut_record.cpp
+--- a/app/src/renut_engine/gpu/banjo_renut_record.cpp
++++ b/app/src/renut_engine/gpu/banjo_renut_record.cpp
+@@ -1,4 +1,5 @@
+ // banjo-nx (package 28b): banjo_renut_record_worker. See banjo_renut_record.h.
++#include <pthread.h>  // Dragon Blast (renut/0206): thread name
+ #include "renut_engine/gpu/banjo_renut_record.h"
+ 
+ #include <atomic>
+@@ -100,6 +101,9 @@
+ void Play(plume::RenderCommandList *cmd, const uint8_t *p, const uint8_t *end);
+ 
+ void Worker() {
++#if defined(__ANDROID__)
++  pthread_setname_np(pthread_self(), "Renut Record");  // Dragon Blast (renut/0206): for the app's core placement
++#endif
+ #if REX_PLATFORM_SWITCH
+   const int core = REXCVAR_GET(banjo_renut_record_worker_core);
+   const bool priority_ok = RexSwitchSetCurrentThreadPriorityOk(kWorkerPriority);

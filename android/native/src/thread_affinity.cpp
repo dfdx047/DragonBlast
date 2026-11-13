@@ -48,7 +48,11 @@ REXCVAR_DEFINE_INT32(android_affinity_mode, 1, "Android",
                      "power-efficient, and core_ctl can park the prime core. "
                      "6 = like 5, but the GPU command processor moves to the prime core while it "
                      "needs more than android_cp_prime_up_pct of a mid core (heavy views) and back "
-                     "when it needs less than android_cp_prime_down_pct of the prime core.");
+                     "when it needs less than android_cp_prime_down_pct of the prime core. "
+                     "7 = the Renut (no command processor): every game thread (guest threads, the Renut's render "
+                     "and record threads) on the performance cores, the prime core included, and none on the "
+                     "little cores - the game's main thread waits on its worker threads, which on the little "
+                     "cores made frames miss the vblank.");
 REXCVAR_DEFINE_BOOL(android_affinity_use_prime, false, "Android",
                     "Modes 2 / 3 / 6 on chips with strong mid cores (>= 3.2 GHz, e.g. Snapdragon 8 "
                     "Elite) still use the prime cores; by default those chips run as mode 5 "
@@ -56,6 +60,10 @@ REXCVAR_DEFINE_BOOL(android_affinity_use_prime, false, "Android",
 REXCVAR_DEFINE_BOOL(android_affinity_rerank_pin, false, "Android",
                     "Diagnostic: the old behaviour of modes 2 / 3, where re-ranking the hot threads "
                     "pinned the swapped threads to single cores")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);
+REXCVAR_DEFINE_BOOL(android_affinity_log, false, "Android",
+                    "Diagnostic: every 5 s, log the game's threads above 5% of a core (smoothed), with the core "
+                    "each last ran on and whether it is pinned")
     .lifecycle(rex::cvar::Lifecycle::kHotReload);
 REXCVAR_DEFINE_BOOL(android_cp_prime_only, false, "Android",
                     "Modes 2 / 3: the GPU command processor runs on the fastest (prime) core only "
@@ -185,6 +193,7 @@ int Mode() {
 struct ThreadInfo {
   std::string name;
   uint64_t ticks = 0;
+  int cpu = -1;  // the core it last ran on
 };
 
 bool ReadThread(int tid, ThreadInfo* out) {
@@ -201,9 +210,10 @@ bool ReadThread(int tid, ThreadInfo* out) {
   std::istringstream rest(line.substr(close + 2));
   std::string field;
   uint64_t utime = 0, stime = 0;
-  for (int i = 3; i <= 15 && (rest >> field); ++i) {   // field 14 = utime, 15 = stime
+  for (int i = 3; i <= 39 && (rest >> field); ++i) {   // field 14 = utime, 15 = stime, 39 = processor
     if (i == 14) utime = std::strtoull(field.c_str(), nullptr, 10);
     if (i == 15) stime = std::strtoull(field.c_str(), nullptr, 10);
+    if (i == 39) out->cpu = std::atoi(field.c_str());
   }
   out->ticks = utime + stime;
   return true;
@@ -215,7 +225,8 @@ bool Managed(const std::string& name) {
   // audio callback thread (nice -16): they were free to run on the cores reserved for the pacing
   // threads and could preempt them for milliseconds.
   static const char* kPrefixes[] = {"XThread", "GPU ", "Main XThread", "Audio", "XMA", "Vulkan Pipeline",
-                                    "SDL", "AudioTrack", "Kernel Dispatch", "Timer", "Worker"};
+                                    "SDL", "AudioTrack", "Kernel Dispatch", "Timer", "Worker",
+                                    "Renut"};  // Renut: the native renderer's threads (renut/0206)
   for (const char* p : kPrefixes) {
     if (name.rfind(p, 0) == 0) return true;
   }
@@ -401,6 +412,24 @@ class ManagerImpl : public Manager {
         }
         last_ticks[tid] = info.ticks;
       }
+      if (REXCVAR_GET(android_affinity_log)) {
+        static int round = 0;
+        if (++round % 5 == 0) {
+          std::vector<std::pair<double, int>> busy;
+          for (auto& [tid, info] : threads) {
+            if (smoothed.count(tid) && smoothed[tid] >= 5.0) busy.push_back({smoothed[tid], tid});
+          }
+          std::sort(busy.rbegin(), busy.rend());
+          std::string line;
+          for (auto& [pct, tid] : busy) {
+            char item[96];
+            std::snprintf(item, sizeof(item), "%s'%s' %d %.0f%% cpu%d%s", line.empty() ? "" : ", ",
+                          threads[tid].name.c_str(), tid, pct, threads[tid].cpu, pinned.count(tid) ? " (hot)" : "");
+            line += item;
+          }
+          LOGI("threads (mode %d): %s", Mode(), line.c_str());
+        }
+      }
       // Forget threads that exited.
       for (auto it = pinned.begin(); it != pinned.end();) it = threads.count(it->first) ? std::next(it) : pinned.erase(it);
 
@@ -412,7 +441,10 @@ class ManagerImpl : public Manager {
         mode = Mode();
         prime_only = REXCVAR_GET(android_cp_prime_only);
         for (auto& [t, c] : pinned) {
-          SetMask(t, mode >= 2 ? MaskMode2(threads[t].name) : mode == 1 ? performance_ : std::vector<int>{c});
+          SetMask(t, mode == 7 ? performance_
+                     : mode >= 2 ? MaskMode2(threads[t].name)
+                     : mode == 1 ? performance_
+                                 : std::vector<int>{c});
         }
         applied_rest.clear();
         LOGI("affinity mode changed to %d", mode);
@@ -472,7 +504,8 @@ class ManagerImpl : public Manager {
           for (auto& [t, c] : pinned) taken |= (c == core);
           if (taken) continue;
           pinned[tid] = core;
-          SetMask(tid, Mode() >= 2 ? MaskMode2(threads[tid].name)
+          SetMask(tid, Mode() == 7 ? performance_
+                       : Mode() >= 2 ? MaskMode2(threads[tid].name)
                        : Mode() == 1 ? performance_
                                                                  : std::vector<int>{core});
           LOGI("pinned '%s' (tid %d, %.0f%%) to cpu%d", threads[tid].name.c_str(), tid, pct, core);
@@ -573,7 +606,7 @@ class ManagerImpl : public Manager {
         for (auto& [t, c] : pinned) reserved |= (uint64_t(1) << c);
       } else if (Mode() == 4) {
         for (int c : performance_) reserved |= uint64_t(1) << c;
-      } else if (Mode() >= 2 && !performance_.empty()) {
+      } else if (Mode() >= 2 && Mode() != 7 && !performance_.empty()) {
         for (int i = 0; i < g_prime_count; ++i) reserved |= uint64_t(1) << performance_[i];
       }
       std::vector<int> rest;
@@ -588,6 +621,18 @@ class ManagerImpl : public Manager {
           if (applied_rest[tid] != 1) {
             SetMask(tid, MaskMode2(info.name));
             applied_rest[tid] = 1;
+          }
+          continue;
+        }
+        if (Mode() == 7) {
+          // Mode 7: the game's threads on the performance cores; the platform's (SDL, audio) anywhere.
+          const bool game = info.name.rfind("XThread", 0) == 0 || info.name.rfind("Main XThread", 0) == 0 ||
+                            info.name.rfind("Renut", 0) == 0 || info.name.rfind("Kernel Dispatch", 0) == 0 ||
+                            info.name.rfind("XMA", 0) == 0;
+          const uint64_t key = game ? ~uint64_t(0) - 1 : ~uint64_t(0) - 2;
+          if (applied_rest[tid] != key) {
+            SetMask(tid, game ? performance_ : All());
+            applied_rest[tid] = key;
           }
           continue;
         }

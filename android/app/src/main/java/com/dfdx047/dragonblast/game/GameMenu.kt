@@ -361,6 +361,7 @@ class MenuModel(
                 val a = AspectMode.entries[i]
                 update { it.copy(aspect = a) }
                 host.setCvar("present_letterbox", if (a == AspectMode.STRETCH) "false" else "true")
+                host.setCvar("swordman_aspect", if (a == AspectMode.STRETCH) "stretch" else "original")  // Renut
             },
             MChoice(
                 s(R.string.gfx_upscaler), s(R.string.gfx_upscaler_short),
