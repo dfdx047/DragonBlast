@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "thps8-android"
+rootProject.name = "DragonBlast"
 include(":app")

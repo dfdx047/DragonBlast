@@ -1,4 +1,6 @@
-// AGP 8.7.3 / Gradle 8.12 / NDK 28.2: the combination SDL3's own Android project uses.
+// Same toolchain as the other DFD ports (Dragon Burst, Dragon Fury): AGP 8.13, Kotlin 2.2, Compose.
 plugins {
-    id("com.android.application") version "8.7.3" apply false
+    id("com.android.application") version "8.13.0" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.10" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
 }

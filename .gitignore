@@ -18,9 +18,6 @@ nxeart
 /android/.gradle/
 /android/app/build/
 /android/build/
-# Gradle wrapper is copied from SDL3's Android project by tools/android/build_apk.sh
-/android/gradlew
-/android/gradle/
 /android/local.properties
 # Bundled GPU driver (tools/android/fetch_turnip.sh)
 /android/app/src/main/assets/drivers/
@@ -31,3 +28,10 @@ nxeart
 /desktop/config/
 /desktop/game/generated
 /desktop/game/win_math_compat.cpp
+
+# Dragon Blast: build outputs, lab files and test captures stay in build/ (ignored)
+/build/
+/android/.kotlin/
+/android/keystore.properties
+*.keystore
+*.jks

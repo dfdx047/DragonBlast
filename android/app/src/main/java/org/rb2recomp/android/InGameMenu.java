@@ -201,7 +201,7 @@ final class InGameMenu {
     }
 
     private void restart() {
-        Intent intent = new Intent(activity, LauncherActivity.class);
+        Intent intent = new Intent().setClassName(activity, "com.dfdx047.dragonblast.LauncherActivity");
         intent.putExtra("play", true);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         activity.startActivity(intent);

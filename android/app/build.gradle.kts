@@ -1,81 +1,86 @@
-// The APK only packages: the native libraries are built separately by tools/android/build_native.sh
-// (clearer logs and incremental builds than driving CMake through Gradle) and staged into jniLibs.
+import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// Dragon Blast: Kotlin/Compose launcher + the RB2 game shell (SDL GameActivity, in-game menu).
 //
-// Signing: a release key when RELEASE_STORE_FILE / RELEASE_STORE_PASSWORD / RELEASE_KEY_ALIAS /
-// RELEASE_KEY_PASSWORD are set in the environment (keep the keystore out of the repository), otherwise
-// the local debug key. -Papp.versionCode=N / -Papp.versionName=X override the version.
+// The native libraries are built separately by tools/android/build_native.sh and staged into
+// app/src/main/jniLibs (clearer logs and incremental builds than CMake through Gradle).
+//
+// Launcher-only builds: when the SDK tree (rexglue-sdk-android, next to the repository) is not there,
+// the SDL Java classes are missing, so the game shell (org.rb2recomp.android) is left out. The APK opens
+// the launcher; Play says the game engine is not in this build. "-Pdb.uiOnly=true" forces that mode.
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// SDL3's Java classes (SDLActivity and friends) are used straight from the SDK tree's SDL checkout.
 val sdkTree: File = (findProperty("rb2.sdk") as String?)?.let { file(it) }
     ?: rootProject.projectDir.parentFile.parentFile.resolve("rexglue-sdk-android")
-
-// Launcher art made from the owner's own game by tools/android/make_launcher_art.py (git-ignored):
-// background + app icon. Without it the app keeps the system's default icon and a plain launcher.
-val artRes: File = rootProject.projectDir.resolve("art-res")
-val hasArt = artRes.resolve("mipmap-xxxhdpi/ic_launcher.png").isFile
+val sdlJava = sdkTree.resolve("thirdparty/sdl3/android-project/app/src/main/java")
+val uiOnly = (findProperty("db.uiOnly") as String?) == "true" || !sdlJava.isDirectory
 
 android {
-    namespace = "org.rb2recomp.android"
-    compileSdk = 35
+    namespace = "com.dfdx047.dragonblast"
+    compileSdk = 36
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "org.rb2recomp.android"
+        applicationId = "com.dfdx047.dragonblast"
         minSdk = 29      // memfd / ASharedMemory and a linker with the namespaces the SDK needs
         targetSdk = 35
         versionCode = (findProperty("app.versionCode") as String?)?.toInt() ?: 1
-        versionName = (findProperty("app.versionName") as String?) ?: "0.1.0-dev"
+        versionName = (findProperty("app.versionName") as String?) ?: "0.1.0"
         ndk { abiFilters += "arm64-v8a" }
-        // In-app update checks read this update.json; empty (the default) = no checks (dev builds).
-        resValue("string", "update_manifest_url", (findProperty("app.updateUrl") as String?) ?: "")
-        manifestPlaceholders["appIcon"] =
-            if (hasArt) "@mipmap/ic_launcher" else "@mipmap/ic_launcher_port"
+        buildConfigField("boolean", "UI_ONLY", uiOnly.toString())
+        // Only the three languages the launcher is translated to.
+        @Suppress("DEPRECATION")
+        resourceConfigurations += listOf("en", "pt", "es")
     }
 
-    val releaseStore = System.getenv("RELEASE_STORE_FILE")
-    signingConfigs {
-        if (releaseStore != null) {
-            create("release") {
-                storeFile = file(releaseStore)
-                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
-                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
-            }
+    // Release key: keystore.properties next to settings.gradle.kts (not in git) with storeFile,
+    // storePassword, keyAlias, keyPassword. Without it, the debug key.
+    val keyFile = rootProject.file("keystore.properties")
+    if (keyFile.exists()) {
+        val p = Properties().apply { keyFile.inputStream().use { load(it) } }
+        signingConfigs.create("release") {
+            storeFile = rootProject.file(p.getProperty("storeFile"))
+            storePassword = p.getProperty("storePassword")
+            keyAlias = p.getProperty("keyAlias")
+            keyPassword = p.getProperty("keyPassword")
         }
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName(if (releaseStore != null) "release" else "debug")
+            signingConfig = if (keyFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 
     packaging {
         jniLibs {
-            // The SDK dlopen()s librexgpu-xenos.so by path from the native library directory, so the
-            // libraries must exist as real files there rather than stay compressed inside the APK.
+            // The SDK dlopen()s librexgpu-xenos.so by path from the native library directory.
             useLegacyPackaging = true
         }
     }
 
-    // Bundled GPU driver (assets/drivers/...): keep it stored, not deflated, so the app can compare its
-    // size cheaply and copy it only when needed.
     androidResources {
         noCompress += listOf("so")
     }
 
     sourceSets {
         getByName("main") {
-            java.srcDir(sdkTree.resolve("thirdparty/sdl3/android-project/app/src/main/java"))
-            if (hasArt) res.srcDir(artRes)
-            // Third-party licence notices (android/licenses/NOTICE.txt), shown by the launcher.
+            if (!uiOnly) java.srcDir(sdlJava)
+            // Third-party licence notices (android/licenses/NOTICE.txt), shown in About.
             assets.srcDir(rootProject.projectDir.resolve("licenses"))
         }
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -86,4 +91,31 @@ android {
     lint {
         abortOnError = false
     }
+}
+
+// Launcher-only: the game shell needs SDL's classes.
+if (uiOnly) {
+    android.sourceSets.getByName("main").java.filter.exclude("org/rb2recomp/**")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2025.09.00")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }

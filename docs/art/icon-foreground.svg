@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#202a38"/><stop offset="0.55" stop-color="#11161e"/><stop offset="1" stop-color="#06080b"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="40%" cy="34%" r="70%">
+      <stop offset="0" stop-color="#ffd9a3"/><stop offset="0.28" stop-color="#e9a558"/>
+      <stop offset="0.68" stop-color="#a95a21"/><stop offset="1" stop-color="#3e1a07"/>
+    </radialGradient>
+    <radialGradient id="rim" cx="50%" cy="50%" r="50%">
+      <stop offset="0.80" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </radialGradient>
+    <radialGradient id="hl" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#f4c58c" stop-opacity="0.55"/><stop offset="0.5" stop-color="#d9934c" stop-opacity="0.18"/><stop offset="1" stop-color="#d9934c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cool" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#9cc3ea" stop-opacity="0"/><stop offset="0.7" stop-color="#b9d6f2" stop-opacity="0.85"/><stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e7a45c" stop-opacity="0"/><stop offset="0.7" stop-color="#f0bd7f" stop-opacity="0.85"/><stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="blur2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="blur1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.8"/></filter>
+    <filter id="blur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <clipPath id="orbclip"><circle cx="54" cy="54" r="19"/></clipPath>
+  </defs>
+  
+
+  <!-- the clash behind the orb: steel from the lower left, ember from the upper right -->
+  <circle cx="54" cy="54" r="40" fill="url(#glow)"/>
+  <path d="M8 86 Q 30 70 44 59" stroke="url(#cool)" stroke-width="7" fill="none" stroke-linecap="round" filter="url(#blur2)" opacity="0.8"/>
+  <path d="M8 86 Q 30 70 44 59" stroke="url(#cool)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M100 22 Q 78 38 64 49" stroke="url(#warm)" stroke-width="7" fill="none" stroke-linecap="round" filter="url(#blur2)" opacity="0.8"/>
+  <path d="M100 22 Q 78 38 64 49" stroke="url(#warm)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <!-- the orb, scaled up around the centre -->
+  <g transform="translate(54 54) scale(1.2) translate(-54 -54)">
+  <circle cx="55" cy="57" r="19.5" fill="#000" opacity="0.45" filter="url(#blur2)"/>
+  <circle cx="54" cy="54" r="19" fill="url(#orb)"/>
+  <g clip-path="url(#orbclip)">
+    <polygon points="49.00,45.60 50.09,48.50 53.18,48.64 50.76,50.57 51.59,53.56 49.00,51.85 46.41,53.56 47.24,50.57 44.82,48.64 47.91,48.50" fill="#8f2a1c" opacity="0.92"/>
+    <polygon points="59.50,53.60 60.59,56.50 63.68,56.64 61.26,58.57 62.09,61.56 59.50,59.85 56.91,61.56 57.74,58.57 55.32,56.64 58.41,56.50" fill="#8f2a1c" opacity="0.92"/>
+    <!-- light breaking through the cracks -->
+    <path d="M54 35 L51.5 43 L56 47.5 L52.5 53 L57.5 58 L54.5 64 L56.5 73" stroke="#ffcf8f" stroke-width="3.2" fill="none" stroke-linejoin="round" filter="url(#blur1)" opacity="0.9"/>
+    <path d="M52.5 53 L46 55.5 L42 61" stroke="#ffcf8f" stroke-width="2.4" fill="none" stroke-linejoin="round" filter="url(#blur1)" opacity="0.8"/>
+    <path d="M56 47.5 L63 45 L67.5 41" stroke="#ffcf8f" stroke-width="2.4" fill="none" stroke-linejoin="round" filter="url(#blur1)" opacity="0.8"/>
+    <path d="M54 35 L51.5 43 L56 47.5 L52.5 53 L57.5 58 L54.5 64 L56.5 73" stroke="#fff6e6" stroke-width="0.9" fill="none" stroke-linejoin="round"/>
+    <path d="M52.5 53 L46 55.5 L42 61" stroke="#fff6e6" stroke-width="0.7" fill="none" stroke-linejoin="round"/>
+    <path d="M56 47.5 L63 45 L67.5 41" stroke="#fff6e6" stroke-width="0.7" fill="none" stroke-linejoin="round"/>
+    <circle cx="54" cy="54" r="19" fill="url(#rim)"/>
+    <ellipse cx="47" cy="44" rx="7" ry="4.2" fill="url(#hl)" transform="rotate(-30 47 44)"/>
+  </g>
+  <circle cx="54" cy="54" r="19" fill="none" stroke="#ffe2b8" stroke-opacity="0.35" stroke-width="0.5"/>
+  </g>
+  <!-- chips flying off -->
+  <polygon points="77,64 80,62.8 80.6,65.8 78,66.8" fill="#c9823f"/>
+  <polygon points="29,44 31.4,42.6 32.1,45.2 29.7,46.1" fill="#b77236"/>
+  <polygon points="72,74 74,73.4 74.2,75.2 72.5,75.8" fill="#a96a32"/>
+  <circle cx="81" cy="57" r="0.8" fill="#ffe3bf"/><circle cx="27" cy="52" r="0.7" fill="#d8e8f8"/><circle cx="68" cy="79" r="0.6" fill="#ffe3bf"/>
+
+</svg>

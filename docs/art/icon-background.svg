@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#202a38"/><stop offset="0.55" stop-color="#11161e"/><stop offset="1" stop-color="#06080b"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="40%" cy="34%" r="70%">
+      <stop offset="0" stop-color="#ffd9a3"/><stop offset="0.28" stop-color="#e9a558"/>
+      <stop offset="0.68" stop-color="#a95a21"/><stop offset="1" stop-color="#3e1a07"/>
+    </radialGradient>
+    <radialGradient id="rim" cx="50%" cy="50%" r="50%">
+      <stop offset="0.80" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </radialGradient>
+    <radialGradient id="hl" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#f4c58c" stop-opacity="0.55"/><stop offset="0.5" stop-color="#d9934c" stop-opacity="0.18"/><stop offset="1" stop-color="#d9934c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cool" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#9cc3ea" stop-opacity="0"/><stop offset="0.7" stop-color="#b9d6f2" stop-opacity="0.85"/><stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e7a45c" stop-opacity="0"/><stop offset="0.7" stop-color="#f0bd7f" stop-opacity="0.85"/><stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="blur2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="blur1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="0.8"/></filter>
+    <filter id="blur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+    <clipPath id="orbclip"><circle cx="54" cy="54" r="19"/></clipPath>
+  </defs>
+  <rect width="108" height="108" fill="url(#bg)"/>
+
+</svg>
