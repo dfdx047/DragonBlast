@@ -45,6 +45,12 @@
         <!-- Own process: native libraries cannot be reloaded, so each session starts clean.
              configChanges as in SDL3's template: rotating or plugging in a pad must not recreate it. -->
         <activity
+            android:name=".controls.ControlsEditorActivity"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.DragonBlast"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+        <activity
             android:name="org.rb2recomp.android.GameActivity"
             android:exported="false"
             android:process=":game"

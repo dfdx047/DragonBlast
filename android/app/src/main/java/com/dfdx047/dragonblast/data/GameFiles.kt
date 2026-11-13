@@ -37,6 +37,8 @@ object AppPaths {
     /** The game shell loads a custom driver from here (LaunchConfig: drivers/custom/<lib>). */
     val activeDriver get() = File(internal, "drivers/custom")
     val tmp get() = File(internal, "tmp").also { it.mkdirs() }
+    /** On-screen control layouts edited by the player (one JSON per layout kind and scheme). */
+    val controls get() = File(internal, "controls")
 }
 
 /** The supported disc: Xbox 360, USA, Rev 1 (title 4E4D0826). */

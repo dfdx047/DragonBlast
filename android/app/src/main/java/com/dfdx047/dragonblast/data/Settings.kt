@@ -24,7 +24,7 @@ enum class TouchPreset(val key: String) { PRO("pro"), NORMAL("normal"), CASUAL("
 enum class ButtonStyle(val key: String) { DRAGON("dragon"), XBOX("xbox"), PLAYSTATION("playstation"), NINTENDO("nintendo") }
 
 /** Fight controls: Raging Blast 2's own, or Budokai Tenkaichi 3's layout (fights only, menus untouched). */
-enum class ControlScheme(val key: String) { RAGING_BLAST("rb2"), TENKAICHI("bt3") }
+enum class ControlScheme(val key: String) { RAGING_BLAST("rb2"), MODERN("modern"), TENKAICHI("bt3") }
 
 enum class StickMode(val key: String) { FIXED("fixed"), DYNAMIC("dynamic") }
 

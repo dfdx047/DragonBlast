@@ -1,0 +1,17 @@
+diff --git a/src/input/sdl/sdl_input_driver.cpp b/src/input/sdl/sdl_input_driver.cpp
+index c7c440dd..1fa97f95 100644
+--- a/src/input/sdl/sdl_input_driver.cpp
++++ b/src/input/sdl/sdl_input_driver.cpp
+@@ -161,7 +161,11 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+     SDL_GUIDToString(SDL_GetJoystickGUID(SDL_GetGamepadJoystick(controller.sdl)), guid_text,
+                      static_cast<int>(sizeof(guid_text)));
+     info.guid = guid_text;
+-    info.synthetic = false;
++    // Dragon Blast: the on-screen touch controls are an SDL virtual pad (VID 0x1209 / PID 0xDB01).
++    // As a synthetic device it always drives player 1, together with a physical pad, instead of
++    // taking player 2.
++    info.synthetic = SDL_GetGamepadVendor(controller.sdl) == 0x1209 &&
++                     SDL_GetGamepadProduct(controller.sdl) == 0xDB01;
+     out.push_back(info);
+   }
+ }

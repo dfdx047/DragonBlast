@@ -11,6 +11,31 @@ import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.outlined.SportsMartialArts
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
+import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import com.dfdx047.dragonblast.controls.ControlLayoutStore
+import com.dfdx047.dragonblast.controls.ControlsEditorActivity
+import com.dfdx047.dragonblast.controls.LayoutKind
+import com.dfdx047.dragonblast.data.Settings
+import com.dfdx047.dragonblast.game.TouchControlsView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +58,6 @@ import com.dfdx047.dragonblast.ui.components.Divider
 import com.dfdx047.dragonblast.ui.components.SectionCard
 import com.dfdx047.dragonblast.ui.components.SettingSlider
 import com.dfdx047.dragonblast.ui.components.SettingSwitch
-import com.dfdx047.dragonblast.ui.components.TouchPreview
 import com.dfdx047.dragonblast.ui.components.help
 import com.dfdx047.dragonblast.ui.theme.DbColors
 
@@ -53,7 +77,22 @@ fun ControlsScreen(vm: LauncherViewModel) {
                 selected = s.touchMode,
                 onSelect = { m -> vm.update { it.copy(touchMode = m) } },
             )
-            TouchPreview(s.touchPreset, s.buttonStyle, s.leftHanded, s.touchOpacity, s.touchScale)
+            ControlsPreview(s)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val context = LocalContext.current
+                OutlinedButton(onClick = {
+                    context.startActivity(Intent(context, ControlsEditorActivity::class.java))
+                }) {
+                    Icon(Icons.Outlined.Edit, null, tint = DbColors.Ember)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.ctl_edit), color = DbColors.Text)
+                }
+                OutlinedButton(onClick = {
+                    context.startActivity(Intent(context, ControlsEditorActivity::class.java).putExtra(ControlsEditorActivity.EXTRA_MENU, true))
+                }) {
+                    Text(stringResource(R.string.ctl_edit_menu), color = DbColors.TextDim)
+                }
+            }
             ChoiceRow(
                 title = stringResource(R.string.ctl_preset),
                 help = help(R.string.ctl_preset_short, R.string.ctl_preset_long),
@@ -100,8 +139,9 @@ fun ControlsScreen(vm: LauncherViewModel) {
                 title = stringResource(R.string.ctl_scheme),
                 help = help(R.string.ctl_scheme_short, R.string.ctl_scheme_long),
                 options = listOf(
-                    Choice(ControlScheme.RAGING_BLAST, "Raging Blast 2", stringResource(R.string.ctl_scheme_original)),
-                    Choice(ControlScheme.TENKAICHI, "Tenkaichi 3", stringResource(R.string.experimental)),
+                    Choice(ControlScheme.RAGING_BLAST, "Raging Blast", stringResource(R.string.ctl_scheme_original)),
+                    Choice(ControlScheme.MODERN, stringResource(R.string.ctl_scheme_modern), stringResource(R.string.ctl_scheme_modern_note)),
+                    Choice(ControlScheme.TENKAICHI, "Tenkaichi 3", stringResource(R.string.ctl_scheme_bt3_note)),
                 ),
                 selected = s.controlScheme,
                 onSelect = { c -> vm.update { it.copy(controlScheme = c) } },
@@ -161,5 +201,51 @@ fun ControlsScreen(vm: LauncherViewModel) {
                 vm.update { it.copy(nintendoLayout = v) }
             }
         }
+    }
+}
+
+/**
+ * The fight layout of the chosen scheme, drawn by the same view the game uses, on a dark stand-in for the game
+ * picture with the phone's landscape proportions. Not interactive.
+ */
+@Composable
+private fun ControlsPreview(s: Settings) {
+    val context = LocalContext.current
+    val dm = context.resources.displayMetrics
+    val longSide = maxOf(dm.widthPixels, dm.heightPixels)
+    val shortSide = minOf(dm.widthPixels, dm.heightPixels).coerceAtLeast(1)
+    val shape = RoundedCornerShape(14.dp)
+    // Re-read the saved layout whenever the screen comes back (e.g. from the editor).
+    var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(owner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumes++
+        }
+        owner.lifecycle.addObserver(obs)
+        onDispose { owner.lifecycle.removeObserver(obs) }
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(longSide.toFloat() / shortSide)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF2A3442), Color(0xFF1B2028), Color(0xFF15130F))))
+            .border(1.dp, DbColors.Line, shape),
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                TouchControlsView(ctx).apply {
+                    referenceWidthPx = longSide
+                    setOnTouchListener { _, _ -> true }
+                }
+            },
+            update = { v ->
+                resumes.let { } // read so a resume refreshes the preview
+                v.applySettings(s)
+                v.layout = ControlLayoutStore.load(LayoutKind.GAMEPLAY, s.controlScheme)
+            },
+            modifier = Modifier.matchParentSize(),
+        )
     }
 }

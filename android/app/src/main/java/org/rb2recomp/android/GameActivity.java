@@ -157,6 +157,9 @@ public class GameActivity extends SDLActivity {
                     } catch (UnsatisfiedLinkError ignored) {
                     }
                     hideSystemBars();
+                    if (touch != null) {
+                        touch.setSideMenuOpen(open);
+                    }
                     if (!open && mSurface != null) {
                         mSurface.requestFocus();
                     }
@@ -168,6 +171,8 @@ public class GameActivity extends SDLActivity {
                     getWindow().getDecorView().postDelayed(GameActivity.this::hideSystemBars, 800);
                 }
             });
+            touch = new com.dfdx047.dragonblast.game.TouchOverlay(this, mLayout);
+            touch.onCreate();
             // Let the edge swipes through to the app instead of the system back gesture (Android
             // allows up to 200 dp per edge; elsewhere the back gesture opens the menu too).
             final View decor = getWindow().getDecorView();
@@ -217,6 +222,8 @@ public class GameActivity extends SDLActivity {
     private static final int EDGE_DP = 36;      // a swipe must start this close to the left/right edge
     private static final int SWIPE_DP = 48;     // ... and travel this far inwards
     private InGameMenu menu;
+    /** Dragon Blast on-screen controls (com.dfdx047.dragonblast.game). */
+    private com.dfdx047.dragonblast.game.TouchOverlay touch;
     private boolean edgeTracking, edgeFromRight, swallowGesture;
     private float edgeDownX, edgeDownY;
     private float hatX, hatY;
@@ -261,6 +268,9 @@ public class GameActivity extends SDLActivity {
             }
             return handled;
         }
+        if (touch != null && touch.onScreenTouch(ev)) {
+            return true;
+        }
         if (action == MotionEvent.ACTION_DOWN) {
             int width = getWindow().getDecorView().getWidth();
             float x = ev.getX();
@@ -289,6 +299,9 @@ public class GameActivity extends SDLActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (touch != null) {
+            touch.onPhysicalInput(event);
+        }
         if (menu != null && menu.isOpen()) {
             if (menu.onKey(event)) {
                 if (!menu.isOpen() && mSurface != null) {
@@ -305,6 +318,9 @@ public class GameActivity extends SDLActivity {
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent ev) {
+        if (touch != null) {
+            touch.onPhysicalInput(ev);
+        }
         if (menu != null && menu.isOpen()) {
             // Sticks stay away from the game; a d-pad reported as a hat moves the menu focus.
             if ((ev.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
@@ -404,6 +420,23 @@ public class GameActivity extends SDLActivity {
                 || new java.io.File(LaunchConfig.root(this), "highrefresh.txt").exists());
         // A display mode switch can bring the system bars back: hide them again once it settled.
         getWindow().getDecorView().postDelayed(this::hideSystemBars, 800);
+    }
+
+    @Override
+    protected void onPause() {
+        if (touch != null) {
+            touch.onPause();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (touch != null) {
+            touch.onDestroy();
+            touch = null;
+        }
+        super.onDestroy();
     }
 
     @Override

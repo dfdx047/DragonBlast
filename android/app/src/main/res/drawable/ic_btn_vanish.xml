@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- On-screen button icon (original, Dragon Blast): a fighter blinking sideways. White: the colour is applied when drawn. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M16,3.5 A3.5,3.5 0 1 1 15.99,3.5 Z M9.6,21 Q10.2,12.2 16,12.2 Q21.8,12.2 22.4,21 Z M1.5,9 H8.5 V10.6 H1.5 Z M3,13 H9.5 V14.6 H3 Z M1.5,17 H8 V18.6 H1.5 Z" />
+</vector>
