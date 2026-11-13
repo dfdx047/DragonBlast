@@ -45,13 +45,21 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
   3. Disco extraído em `build/game` (`python3 tools/android/xdvdfs.py <iso> build/game`);
      `tools/android/codegen.sh build/game` → `android/codegen/`. O codegen só usa o `default.xex`: depois dele o
      resto do disco (5,3 GB) pode sair do PC; no Poco ele fica em `files/game`.
-  4. `tools/android/build_native.sh` (NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema) e `build_apk.sh`.
+  4. Renut (opcional; sem ele o build fica só com o Xenia): `tools/android/setup_renut.sh` (`build/mgr-nx-deko` +
+     `patches/renut`); `python3 tools/android/xdvdfs.py <iso> build/game default.xex
+     data/X360/st_pack_boot_pt_x360.afs data/X360/st_pack_battle_map_pt_x360.afs`; `tools/renut/shaders.sh`
+     (DXC e XenosRecomp em `build/renut/host`, shaders em `build/renut/out`). Mudança no Renut = patch novo em
+     `patches/renut` (o CMake recusa a árvore com alterações à mão).
+  5. `tools/android/build_native.sh` (NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema) e `build_apk.sh`.
      Ou tudo de uma vez: `RB2_GAME=build/game tools/android/rebuild.sh <tag>` → `build/apk/`.
   - `default.xex` suportado: 7 151 616 bytes, SHA-256 `d0291e64…e989c` (USA Rev 1).
 - Instalar no Poco: `adb -s 4LPF6HMFEYPZCEJB install -r <apk>` ("Instalar via USB" ligado no HyperOS).
 
 ## Licença
 - BSD-3-Clause do RB2 (`LICENSE`). Arquivos do jogo e código recompilado nunca no git nem num APK distribuído.
+- O Renut (`patches/renut`, `android/native/src/renut`, `tools/renut`) é GPL-3.0 (`LICENSE-GPL-3.0`) e mantém os
+  créditos (README). Os shaders traduzidos (`build/renut/out/shader_cache.cpp`) são dados do jogo: só em builds pessoais
+  até o libgame cifrado (Optxbox `RENUT_DBZ.md`).
 
 ## Estado
 Ver `docs/ROADMAP.md`.

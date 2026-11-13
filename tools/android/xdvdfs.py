@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Minimal XDVDFS (Xbox / Xbox 360 game disc) lister / extractor.
 
-  xdvdfs.py <image.iso> [out_dir]     no out_dir -> list only
+  xdvdfs.py <image.iso> [out_dir] [file ...]   no out_dir -> list only; files -> only those (paths as listed)
 """
 import os
 import struct
@@ -54,6 +54,7 @@ def walk(f, base, sector, size, path, out):
 def main():
     iso = sys.argv[1]
     dest = sys.argv[2] if len(sys.argv) > 2 else None
+    only = {a.replace("\\", "/").lower() for a in sys.argv[3:]}
     with open(iso, "rb") as f:
         base, rs, rz = find_partition(f)
         entries = []
@@ -66,6 +67,8 @@ def main():
                 print(rel if s is None else f"{rel}  {n}")
             return
         for rel, s, n in entries:
+            if only and (s is None or rel.replace("\\", "/").lower() not in only):
+                continue
             p = os.path.join(dest, rel)
             if s is None:
                 os.makedirs(p, exist_ok=True)

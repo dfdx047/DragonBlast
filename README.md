@@ -20,6 +20,17 @@ Recompiled using the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk)
 - [ReXGlue](https://github.com/rexglue/rexglue-sdk) for the recompilation tools.
 - [dlmalloc](https://gee.cs.oswego.edu/dl/html/malloc.html) for the heap allocator.
 - [REBlue](https://github.com/rexglue/reblue) for the dlmalloc setup.
+- The **Renut** native renderer (Dragon Blast's optional renderer): [mgr-nx-deko](https://github.com/tuancapoo/mgr-nx-deko)
+  by tuancapoo, whose renderer comes from **reNut** by masterspike52, through banjo-nx and sa2-nx;
+  [Zandatsu](https://github.com/dfdx047/Zandatsu) and Dragon Burst (its Android integration). Used with its authors'
+  permission, with credit and open source.
+- AMD FidelityFX FSR 1 / CAS headers (MIT, `third_party/fidelityfx`).
+
+## License
+
+The RB2 recompilation code is BSD-3-Clause (`LICENSE`). The Renut parts (`patches/renut/`, `android/native/src/renut/`,
+`tools/renut/`) derive from mgr-nx-deko and are GPL-3.0 (`LICENSE-GPL-3.0`); an APK built with the Renut is GPL-3.0 as
+a whole.
 ## Legal
 
 This repository contains no game data: no disc image, `default.xex`, extracted files or recompiled

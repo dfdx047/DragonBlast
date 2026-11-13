@@ -11,6 +11,11 @@
 #include <rex/perf/counter.h>
 #include <rex/rex_app.h>
 
+// Dragon Blast: the Renut (swordman_renderer = renut), android/native/src/renut/rb2_renut_app.h.
+#if defined(DB_RENUT)
+#include "rb2_renut_app.h"
+#endif
+
 class Rb2App : public rex::ReXApp {
  public:
   using rex::ReXApp::ReXApp;
@@ -18,6 +23,31 @@ class Rb2App : public rex::ReXApp {
   static std::unique_ptr<rex::ui::WindowedApp> Create(rex::ui::WindowedAppContext& ctx) {
     return std::unique_ptr<Rb2App>(new Rb2App(ctx, "rb2", PPCImageConfig));
   }
+
+#if defined(DB_RENUT)
+  void OnPreSetup(rex::RuntimeConfig& config) override { Rb2RenutPreSetup(config); }
+
+  std::optional<rex::PathConfig> OnFinalizePaths(const rex::PathConfig& defaults,
+                                                 std::function<void(rex::PathConfig)> resume) override {
+    Rb2RenutStart(app_context(), [this] { return imgui_drawer(); });
+    return ReXApp::OnFinalizePaths(defaults, std::move(resume));
+  }
+
+  // The SDK's ImGui (menus) drawn by plume, and its window.
+  std::unique_ptr<rex::ui::ImmediateDrawer> OnCreateImmediateDrawer() override {
+    if (banjo::renut_gpu::Active()) return renut::gpu::CreateOverlayDrawer();
+    return ReXApp::OnCreateImmediateDrawer();
+  }
+
+  void OnWindowPixelSizeChanged(uint32_t width, uint32_t height) override {
+    ReXApp::OnWindowPixelSizeChanged(width, height);
+    if (banjo::renut_gpu::Active()) renut::gpu::OnWindowResized();
+  }
+
+  void OnShutdown() override {
+    if (banjo::renut_gpu::Active()) renut::gpu::ShutdownRenderer();
+  }
+#endif
 
   // The runtime compiles the per-frame perf-counter CSV writer in, but nothing in the SDK opens
   // the --perf_log_csv file: wire it once logging is up (same as Project8Recomp).

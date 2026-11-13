@@ -61,7 +61,7 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                 help = help(R.string.gfx_renderer_short, R.string.gfx_renderer_long),
                 options = listOf(
                     Choice(Renderer.XENIA, "Xenia", stringResource(R.string.gfx_renderer_xenia_note)),
-                    Choice(Renderer.RENUT, "Renut", stringResource(R.string.in_development), enabled = false),
+                    Choice(Renderer.RENUT, "Renut", stringResource(R.string.gfx_renderer_renut_note)),
                 ),
                 selected = s.renderer,
                 onSelect = { r -> vm.update { it.copy(renderer = r) } },

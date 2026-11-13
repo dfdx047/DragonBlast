@@ -1,0 +1,154 @@
+Dragon Blast (2026-11-13): XenosRecomp on Raging Blast 2's shaders (13 of its 538 vertex shaders did not compile).
+
+- A constant named like a swizzle ("z" in RB2's engine shaders) became "#define z g_C(n)" and broke every ".z":
+  such names (only x/y/z/w or r/g/b/a letters) get the prefix "c_".
+- Vertex shaders reading PSIZE (point sprites) had an input without [[vk::location]] (DXC: "partial explicit stage
+  input location assignment"): PointSize 0 is location 23 in the table the Renut's vertex layouts share (its enum
+  gets the name PointSize next to PSize). An input still missing from the table is reported instead of the assert,
+  which a Release build drops.
+
+diff --git a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
+--- a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
++++ b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
+@@ -51,7 +51,8 @@
+     X(TexCoord,  7, 19) \
+     X(TexCoord,  8, 20) \
+     X(TexCoord,  9, 21) \
+-    X(TexCoord, 10, 22)
++    X(TexCoord, 10, 22) \
++    X(PointSize, 0, 23)
+ 
+ // SPEC_CONSTANTS_ONLY keeps the HLSL below out of host C++ TUs, which IntelliSense would otherwise parse.
+ #if (!defined(__cplusplus) || defined(__INTELLISENSE__)) && !defined(SHADER_COMMON_SPEC_CONSTANTS_ONLY)
+diff --git a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_recompiler.cpp b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_recompiler.cpp
+--- a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_recompiler.cpp
++++ b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_recompiler.cpp
+@@ -1,3 +1,5 @@
++#include <mutex>
++#include <unordered_set>
+ #include "shader_recompiler.h"
+ #include "shader_common.h"
+ #include <stdexcept>
+@@ -107,6 +109,22 @@
+     uint32_t location;
+ };
+ 
++// Dragon Blast (2026-11-13): a shader constant named like a swizzle (Raging Blast 2 has "z") becomes a macro that
++// breaks every ".z" in the shader; such names get a prefix. The returned text lives as long as the program.
++static const char* banjoConstantName(const uint8_t* name)
++{
++    const char* text = reinterpret_cast<const char*>(name);
++    const size_t length = strlen(text);
++    const bool xyzw = length >= 1 && length <= 4 && strspn(text, "xyzw") == length;
++    const bool rgba = length >= 1 && length <= 4 && strspn(text, "rgba") == length;
++    if (!xyzw && !rgba)
++        return text;
++    static std::mutex mutex;
++    static std::unordered_set<std::string> names;
++    std::lock_guard lock(mutex);
++    return names.insert(std::string("c_") + text).first->c_str();
++}
++
+ static constexpr DeclUsageLocation USAGE_LOCATIONS[] =
+ {
+ #if defined(RENUT_RECOMP)
+@@ -935,12 +953,12 @@
+                 }
+                 else if (findResult != float4Constants.end() && findResult->second->registerCount > 1)
+                 {
+-                    regFormatted = fmt::format("{}({}{})", reinterpret_cast<const char*>(constantTableData + findResult->second->name),
++                    regFormatted = fmt::format("{}({}{})", banjoConstantName(constantTableData + findResult->second->name),
+                         reg - findResult->second->registerIndex, offset);
+                 }
+                 else if (findResult != float4Constants.end() && !relative)
+                 {
+-                    regFormatted = reinterpret_cast<const char*>(constantTableData + findResult->second->name);
++                    regFormatted = banjoConstantName(constantTableData + findResult->second->name);
+                 }
+                 else
+                 {
+@@ -954,7 +972,7 @@
+                 auto findResult = float4Constants.find(reg);
+                 if (findResult != float4Constants.end())
+                 {
+-                    const char* constantName = reinterpret_cast<const char*>(constantTableData + findResult->second->name);
++                    const char* constantName = banjoConstantName(constantTableData + findResult->second->name);
+                     if (findResult->second->registerCount > 1)
+                     {
+                     #ifdef UNLEASHED_RECOMP
+@@ -1875,7 +1893,7 @@
+     for (uint32_t i = 0; i < constantCount; i++)
+     {
+         const ConstantInfo& constantInfo = constantInfos[i];
+-        const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo.name);
++        const char* constantName = banjoConstantName(constantTableData + constantInfo.name);
+ 
+         switch (constantInfo.registerSet)
+         {
+@@ -1946,7 +1964,7 @@
+     for (uint32_t i = 0; i < constantCount; i++)
+     {
+         const ConstantInfo& constantInfo = constantInfos[i];
+-        const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo.name);
++        const char* constantName = banjoConstantName(constantTableData + constantInfo.name);
+ 
+         if (constantInfo.registerSet == RegisterSet::Float4)
+         {
+@@ -2016,7 +2034,7 @@
+         const auto constantInfo = reinterpret_cast<const ConstantInfo*>(
+             constantTableData + constantTableContainer->constantTable.constantInfo + i * sizeof(ConstantInfo));
+ 
+-        const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo->name);
++        const char* constantName = banjoConstantName(constantTableData + constantInfo->name);
+ 
+ #ifdef REBLUE_RECOMP
+         if (isPixelShader && constantInfo->registerSet == RegisterSet::Sampler &&
+@@ -2132,7 +2150,7 @@
+                 continue;
+ #endif
+ 
+-            const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo->name);
++            const char* constantName = banjoConstantName(constantTableData + constantInfo->name);
+ 
+             print("\tfloat4 {}", constantName);
+ 
+@@ -2161,7 +2179,7 @@
+ 
+         if (constantInfo->registerSet == RegisterSet::Sampler)
+         {
+-            const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo->name);
++            const char* constantName = banjoConstantName(constantTableData + constantInfo->name);
+ 
+             for (size_t j = 0; j < std::size(TEXTURE_DIMENSIONS); j++)
+             {
+@@ -2202,7 +2220,7 @@
+ 
+         if (constantInfo->registerSet == RegisterSet::Bool)
+         {
+-            const char* constantName = reinterpret_cast<const char*>(constantTableData + constantInfo->name);
++            const char* constantName = banjoConstantName(constantTableData + constantInfo->name);
+ #ifdef REBLUE_RECOMP
+             // Key named bools by the unified VS(0..127)/PS(128..255) bit so CF tests (also unified) resolve them.
+             const uint32_t unifiedBit = uint32_t(constantInfo->registerIndex) + (isPixelShader ? 128u : 0u);
+@@ -2323,7 +2341,9 @@
+                     break;
+                 }
+             }
+-            assert(locatedInput);
++            if (!locatedInput)
++                fmt::println(stderr, "XenosRecomp: vertex input without a location: usage {} index {}",
++                    uint32_t(vertexElement.usage), uint32_t(vertexElement.usageIndex));
+ 
+             println("in {0} i{1}{2} : {3}{2},", usageType, USAGE_VARIABLES[uint32_t(vertexElement.usage)],
+                 uint32_t(vertexElement.usageIndex), USAGE_SEMANTICS[uint32_t(vertexElement.usage)]);
+diff --git a/app/src/renut_engine/gpu/render/vertex_format.cpp b/app/src/renut_engine/gpu/render/vertex_format.cpp
+--- a/app/src/renut_engine/gpu/render/vertex_format.cpp
++++ b/app/src/renut_engine/gpu/render/vertex_format.cpp
+@@ -26,6 +26,7 @@
+   BlendIndices = 2,
+   Normal = 3,
+   PSize = 4,
++  PointSize = 4,  // XenosRecomp's name (RENUT_VERTEX_INPUT_LOCATIONS, renut/0201)
+   TexCoord = 5,
+   Tangent = 6,
+   Binormal = 7,

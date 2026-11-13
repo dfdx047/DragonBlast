@@ -56,6 +56,23 @@ Falta:
 - Falta conferir no aparelho: a pausa pelo ponteiro `[0x8264C230] − 0x47C` (confirmada em dumps de dois boots, ainda
   não com o jogo rodando), Super 2–4 e Ultimate por direção, Super Rising (R1+R2), losango pelo R3.
 
-## Fase 4 — Renut para o Raging Blast 2
-- Seguir `~/Optxbox/docs/pt-BR/RENDERIZADOR_D3D.md` e o Renut do Dragon Burst: mapear a biblioteca D3D do RB2
-  (d3dmap), M1–M3. Documentação Mali/Adreno já existente no Optxbox e no Fractal (`docs/MALI-ACHADOS.md`).
+## Fase 4 — Renut para o Raging Blast 2 (beta funcionando, 2026-11-13)
+- Base: mgr-nx-deko `ba1a837` (v0.2.2) + `patches/renut` 0001–0120 do Dragon Burst + os do RB2:
+  - `0200` layout do device e hooks do RB2 (`docs/renut/HOOKMAP_RB2.md`, feito por `tools/renut/rb2_layout_edit.py`);
+  - `0201` XenosRecomp: constante com nome de swizzle (`z`) e entrada PSIZE sem location (13 VS do motor);
+  - `0202` contadores dos hooks de command buffer (diagnóstico, logados a cada 10 s pela cola);
+  - `0203` caches do Renut (`renut_pipelines.bin`, `pipeline_list.bin`) no `cache_root` (`files/cache`).
+- Cola: `android/native/src/renut/renut_glue.cpp` (VBlank `8249AED8` a 60 Hz por thread do host; Swap e draws
+  partilhados; captura de quadro com `files/capture.req`; despejo de quadro com `--swordman_renut_frame_dump=true` e
+  `files/frame_dump.req`), `rb2_renut_app.h`, `compat/` (APIs do SDK do Dragon Burst que o Renut usa).
+- **Command buffers do jogo:** o RB2 grava os draws em command buffers em dois devices de tipo 2 e só os executa
+  (`823A87D8`) quando o contador do slot (que cresce quando o D3D pede memória ao alocador do jogo) é > 0. O Renut
+  grava no host e nunca pede memória: a cola marca o slot vazio com 1 antes da execução. Sem isso, 0 draws e tela
+  preta.
+- Shaders: `tools/renut/extract_rb2_shaders.py` (XEX + `st_pack_boot` + `st_pack_battle_map`, compressão `0LCS` da
+  Spike) → 538 contêineres (249 VS, 289 PS), todos traduzidos.
+- Medido no Poco (Mali-G615, resolução 50 % = 640x368, FSR): boot, logos, vídeo, menus, seleção e luta certos;
+  luta a 54–55 FPS (GPU 9,2–9,5 ms por quadro, thread de render 4,2 ms, ~290 draws por quadro); menus 60.
+- Launcher: Gráficos → Renderizador → Renut (beta) passa `--swordman_renderer=renut`.
+- A seguir: otimizar no Mali até 60 estáveis na luta e subir a resolução; contador de FPS do launcher no Renut
+  (hoje mostra "--"); depois o RP5 (perfil SD 480+); widescreen nativo; checar efeitos (aura, raios, explosões).

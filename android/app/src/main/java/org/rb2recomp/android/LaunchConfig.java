@@ -332,6 +332,9 @@ final class LaunchConfig {
         // The guest 60 Hz vblank follows the display's own vsync (AChoreographer).
         defaults.add("--gpu_vblank_display_lock=true");
         defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
+        // Renderer (launcher Graphics): Xenia's emulated GPU, or the Renut (android/native/src/renut, cvar from its glue).
+        defaults.add("--swordman_renderer=" + ("renut".equals(
+                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("renderer", "xenia")) ? "renut" : "xenos"));
         // Budokai Tenkaichi 3 controls in fights (android/native/src/bt3_controls.cpp), touch and physical pads.
         defaults.add("--rb2_bt3_controls=" + "bt3".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2")));

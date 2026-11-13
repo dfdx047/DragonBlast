@@ -115,6 +115,16 @@ if(EXISTS "${THPS_ADRENOTOOLS}/CMakeLists.txt")
     add_dependencies(main main_hook hook_impl file_redirect_hook gsl_alloc_hook)
 endif()
 
+# The Renut (mgr-nx-deko's native Direct3D renderer, swordman_renderer = renut): only when its tree is prepared
+# (tools/android/setup_renut.sh) and the shaders are made (tools/renut/shaders.sh). Game data inside: personal builds.
+set(THPS_RENUT AUTO CACHE STRING "Build the Renut renderer (ON, OFF, AUTO = when build/mgr-nx-deko exists)")
+if(THPS_RENUT STREQUAL "ON" OR (THPS_RENUT STREQUAL "AUTO" AND EXISTS "${THPS_REPO}/build/mgr-nx-deko/app"))
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/renut.cmake")
+    db_renut_setup(main)
+    target_include_directories(main PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/renut")
+    message(STATUS "Renut: on")
+endif()
+
 # The runtime resolves PPCImageConfig, the function table and the app creator from this library.
 target_link_options(main PRIVATE -Wl,--export-dynamic)
 

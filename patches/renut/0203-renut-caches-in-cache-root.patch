@@ -1,0 +1,44 @@
+Dragon Blast (2026-11-13): the Renut's caches (renut_pipelines.bin, pipeline_list.bin) in the runtime's cache_root
+when it is set. Dragon Burst's SDK fork returned the app's data folder from GetExecutableFolder() on Android; Dragon
+Blast's SDK returns the APK's read-only library folder, so the pipelines were never kept between boots.
+
+diff --git a/app/src/renut_engine/gpu/banjo_renut_tuning.cpp b/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
+--- a/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
++++ b/app/src/renut_engine/gpu/banjo_renut_tuning.cpp
+@@ -1,6 +1,7 @@
+ // banjo-nx (2026-10-17): see banjo_renut_tuning.h.
+ #include "renut_engine/gpu/backend/render_thread.h"
+ #include "renut_engine/gpu/backend/video.h"
++#include <rex/runtime.h>  // cache_root (renut/0203)
+ #include <rex/frame_latency.h>
+ #include <rex/perf/frame_rate.h>
+ #include "renut_engine/display_sync.h"
+@@ -1432,9 +1433,18 @@
+ #endif
+ }
+ 
++// Dragon Blast (renut/0203): the runtime's cache_root when set (Android: the app's files/cache; the executable's
++// folder there is the APK's read-only library folder), else the executable's folder.
++static std::filesystem::path RenutCacheBase(bool cache_subfolder) {
++  const std::string &root = REXCVAR_GET(cache_root);
++  if (!root.empty())
++    return std::filesystem::path(root);
++  return cache_subfolder ? rex::filesystem::GetExecutableFolder() / "cache" : rex::filesystem::GetExecutableFolder();
++}
++
+ std::filesystem::path NextToExecutable(const std::string &path) {
+   const std::filesystem::path p(path);
+-  return p.is_relative() ? rex::filesystem::GetExecutableFolder() / p : p;
++  return p.is_relative() ? RenutCacheBase(false) / p : p;
+ }
+ 
+ 
+@@ -1484,7 +1494,7 @@
+   if (!PipelineCacheOn())
+     return;
+   std::error_code ec;
+-  const std::filesystem::path folder = rex::filesystem::GetExecutableFolder() / "cache";
++  const std::filesystem::path folder = RenutCacheBase(true);
+   std::filesystem::create_directories(folder, ec);
+   const std::filesystem::path path = folder / "renut_pipelines.bin";
+   // The shader package in the tag: a new one starts the file over, so entries of shaders no build has any more do not

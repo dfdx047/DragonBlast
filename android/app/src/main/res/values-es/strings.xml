@@ -59,8 +59,9 @@
     <string name="gfx_render">Renderizado</string>
     <string name="gfx_renderer">Renderizador</string>
     <string name="gfx_renderer_short">Quién dibuja el juego.</string>
-    <string name="gfx_renderer_long">Xenia: emula la GPU de Xbox 360 (EDRAM, resolves) sobre Vulkan. Funciona en todas las GPU, pero cuesta más.\n\nRenut: renderizador nativo que dibuja el Direct3D del juego directamente en Vulkan, sin emular la GPU. Mucho más ligero. Se está escribiendo para Raging Blast 2 sobre la misma base que Dragon Burst y se activará cuando esté listo.</string>
+    <string name="gfx_renderer_long">Xenia: emula la GPU de Xbox 360 (EDRAM, resolves) sobre Vulkan. Funciona en todas las GPU, pero cuesta más.\n\nRenut: renderizador nativo que dibuja el Direct3D del juego directamente en Vulkan, sin emular la GPU. Mucho más ligero. Beta: hecho para Raging Blast 2 sobre la misma base que Dragon Burst; si algo se ve mal, vuelve a Xenia.</string>
     <string name="gfx_renderer_xenia_note">GPU emulada</string>
+    <string name="gfx_renderer_renut_note">nativo, beta</string>
     <string name="gfx_resolution">Resolución</string>
     <string name="gfx_resolution_short">Tamaño interno al que dibuja el juego.</string>
     <string name="gfx_resolution_long">Raging Blast 2 dibuja a 1280x720. Valores más bajos dibujan menos píxeles: menos calor y fotogramas más estables en móviles más débiles; luego el escalador estira la imagen a tu pantalla.\n\nSi los fotogramas bajan tras unos minutos, el móvil se está calentando y bajando la velocidad: baja un paso.</string>
