@@ -60,12 +60,12 @@
     <string name="gfx_render">Rendering</string>
     <string name="gfx_renderer">Renderer</string>
     <string name="gfx_renderer_short">Who draws the game.</string>
-    <string name="gfx_renderer_long">Xenia: emulates the Xbox 360 GPU (EDRAM, resolves) over Vulkan. Works on every GPU, but costs more.\n\nRenut: a native renderer that draws the game\'s Direct3D straight in Vulkan, with no GPU emulation. Much lighter. Beta: written for Raging Blast 2 on the same base as Dragon Burst; if something looks wrong, switch back to Xenia.</string>
+    <string name="gfx_renderer_long">Renut (default): a native renderer that draws the game\'s Direct3D straight in Vulkan, with no GPU emulation. Much lighter, and it draws from 360p up to 4K. Beta: written for Raging Blast 2 on the same base as Dragon Burst.\n\nXenia: emulates the Xbox 360 GPU (EDRAM, resolves) over Vulkan. Heavier and limited to 720p; kept for comparison, or if something looks wrong in Renut.</string>
     <string name="gfx_renderer_xenia_note">GPU emulation</string>
     <string name="gfx_renderer_renut_note">native, beta</string>
     <string name="gfx_resolution">Resolution</string>
     <string name="gfx_resolution_short">Internal size the game draws at.</string>
-    <string name="gfx_resolution_long">Raging Blast 2 draws at 1280x720. Lower values draw fewer pixels: less heat and steadier frames on weaker phones; the upscaler then stretches the picture to your screen.\n\nIf frames drop after a few minutes of play the phone is throttling: lower this one step.</string>
+    <string name="gfx_resolution_long">The size the game draws at. Raging Blast 2 was made for 720p (1280x720). Above it (Renut only: 1080p, 2K, 4K) edges and textures get sharper but the GPU works harder; below it (540p, 480p, 360p) the phone stays cooler and frames steadier, and the upscaler stretches the picture to your screen.\n\nWith Renut it changes live from the in-game menu. Xenia goes up to 720p and applies it on reopening.\n\nIf frames drop after a few minutes of play the phone is throttling: lower this one step.</string>
     <string name="gfx_aspect">Aspect ratio</string>
     <string name="gfx_aspect_short">How the 16:9 picture fills a wider screen.</string>
     <string name="gfx_aspect_long">Raging Blast 2 draws a 16:9 picture. Phones are wider (20:9 and up).\n\n16:9: the game\'s own shape, with black bars at the sides.\n\nStretch: the same picture stretched over the whole screen, a little wider than drawn.\n\nChanges at once, also from the in-game menu.</string>
@@ -103,8 +103,9 @@
     <string name="menu_info_render">Drawn at %1$s, shown on %2$s</string>
     <string name="gfx_upscaler">Upscaler</string>
     <string name="gfx_upscaler_short">How the picture is stretched to the screen.</string>
-    <string name="gfx_upscaler_long" formatted="false">Bilinear: plain and soft, the lightest.\n\nFSR 1 (AMD FidelityFX Super Resolution): sharper edges when the resolution is below 100 %, for a tiny GPU cost. Recommended.</string>
+    <string name="gfx_upscaler_long">Bilinear: plain and soft, the lightest. Recommended at 720p and above.\n\nFSR 1 (AMD FidelityFX Super Resolution): sharper edges when the game draws well below your screen (540p and lower), for a small GPU cost.</string>
     <string name="gfx_upscaler_bilinear">Bilinear</string>
+    <string name="gfx_upscaler_fsr_note">sharper at low resolution</string>
     <string name="gfx_frames">Frame rate</string>
     <string name="gfx_fps">Frames per second</string>
     <string name="gfx_fps_short">60 is the game\'s own speed.</string>

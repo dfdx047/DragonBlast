@@ -99,6 +99,29 @@ final class LaunchConfig {
         return generation >= 7 ? 85 : 75;
     }
 
+    /** Renderer (launcher Graphics): the Renut by default, Xenia's emulated GPU for comparison. */
+    static boolean renut(Context context) {
+        return "renut".equals(context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("renderer", "renut"));
+    }
+
+    /** Render height chosen in the launcher (Settings.kt render_height); older saves kept a percent of 720p. */
+    static int renderHeight(Context context) {
+        android.content.SharedPreferences p = context.getSharedPreferences("options", Context.MODE_PRIVATE);
+        int h = p.getInt("render_height", 0);
+        if (h <= 0) h = p.getInt("render_scale", 100) * 720 / 100;
+        int[] heights = renut(context) ? new int[] {360, 480, 540, 720, 1080, 1440, 2160} : new int[] {360, 480, 540, 720};
+        int best = 720;
+        for (int c : heights) {
+            if (Math.abs(c - h) < Math.abs(best - h)) best = c;
+        }
+        return best;
+    }
+
+    /** "1920x1080" for a render height (16:9). */
+    static String renderSizeOfHeight(int height) {
+        return (height * 16 + 8) / 9 + "x" + height;
+    }
+
     static int renderScale(Context context) {
         return context.getSharedPreferences("options", Context.MODE_PRIVATE).getInt("render_scale",
                 defaultRenderScale(context));
@@ -130,7 +153,7 @@ final class LaunchConfig {
 
     // Upscaler from the internal resolution to the screen: bilinear, or AMD FSR 1 (EASU + RCAS).
     static boolean fsr(Context context) {
-        return context.getSharedPreferences("options", Context.MODE_PRIVATE).getBoolean("fsr", true);
+        return context.getSharedPreferences("options", Context.MODE_PRIVATE).getBoolean("fsr", false);
     }
 
     static void setFsr(Context context, boolean on) {
@@ -333,16 +356,24 @@ final class LaunchConfig {
         defaults.add("--gpu_vblank_display_lock=true");
         defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
         // Renderer (launcher Graphics): Xenia's emulated GPU, or the Renut (android/native/src/renut, cvar from its glue).
-        defaults.add("--swordman_renderer=" + ("renut".equals(
-                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("renderer", "xenia")) ? "renut" : "xenos"));
+        final boolean renut = renut(context);
+        defaults.add("--swordman_renderer=" + (renut ? "renut" : "xenos"));
         // Budokai Tenkaichi 3 controls in fights (android/native/src/bt3_controls.cpp), touch and physical pads.
         defaults.add("--rb2_bt3_controls=" + "bt3".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2")));
         // 16:9 with side bars, or stretched over the whole (wider) screen; the game menu changes it live.
         defaults.add("--present_letterbox=" + !"stretch".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9")));
-        // Internal resolution (src/rb2_resolution.h); the presenter scales it to the screen.
-        defaults.add("--rb2_render_scale=" + renderScale(context));
+        // Internal resolution; the presenter scales it to the screen. The Renut draws at a height (360p to 4K, its
+        // glue's sa2_render_height_handheld) over the game's own 1280x720; Xenia at a percent of 720p
+        // (src/rb2_resolution.h, 50-100).
+        int height = renderHeight(context);
+        if (renut) {
+            defaults.add("--rb2_render_scale=100");
+            defaults.add("--sa2_render_height_handheld=" + height);
+        } else {
+            defaults.add("--rb2_render_scale=" + Math.max(50, Math.min(100, height * 100 / 720)));
+        }
         android.content.SharedPreferences opts = context.getSharedPreferences("options", Context.MODE_PRIVATE);
         // Dragon Blast launcher options. The game puts its music and voices on the 5.1 center
         // channel; folding to stereo ourselves keeps them on phone speakers.

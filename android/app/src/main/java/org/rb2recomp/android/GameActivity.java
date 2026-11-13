@@ -269,12 +269,12 @@ public class GameActivity extends SDLActivity {
             java.util.List<String> lines = new java.util.ArrayList<>();
             android.content.SharedPreferences opts = getSharedPreferences("options", MODE_PRIVATE);
             lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_renderer,
-                    "renut".equals(opts.getString("renderer", "xenia")) ? "Renut" : "Xenia"));
+                    LaunchConfig.renut(GameActivity.this) ? "Renut" : "Xenia"));
             lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_gpu, LaunchConfig.gpuName(GameActivity.this)));
             lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_driver, LaunchConfig.driverLabel(GameActivity.this)));
             android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
             lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_render,
-                    LaunchConfig.renderSize(LaunchConfig.renderScale(GameActivity.this)),
+                    LaunchConfig.renderSizeOfHeight(LaunchConfig.renderHeight(GameActivity.this)),
                     Math.max(dm.widthPixels, dm.heightPixels) + "x" + Math.min(dm.widthPixels, dm.heightPixels)));
             return lines;
         }

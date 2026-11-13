@@ -73,6 +73,7 @@ import com.dfdx047.dragonblast.data.FpsMode
 import com.dfdx047.dragonblast.data.Haptics
 import com.dfdx047.dragonblast.data.Orientation
 import com.dfdx047.dragonblast.data.Settings
+import com.dfdx047.dragonblast.data.Renderer
 import com.dfdx047.dragonblast.data.SettingsStore
 import com.dfdx047.dragonblast.data.TouchMode
 import com.dfdx047.dragonblast.data.TouchPreset
@@ -347,8 +348,11 @@ class MenuModel(
 
     private fun pictureItems(): List<MenuItem> {
         val st = settings
-        val scales = SettingsStore.RENDER_SCALES.reversed()
-        val scaleIndex = scales.indexOf(st.renderScale).coerceAtLeast(0)
+        // The renderer the game is running with: the Renut changes resolution live, Xenia on reopening (<= 720p).
+        val renut = started.renderer == Renderer.RENUT
+        val heights = SettingsStore.heightsFor(started.renderer)
+        val heightIndex = heights.indexOf(SettingsStore.effectiveHeight(started.renderer, st.renderHeight))
+            .let { if (it < 0) heights.indexOf(720) else it }
         return listOf(
             MChoice(
                 s(R.string.gfx_aspect), s(R.string.gfx_aspect_short),
@@ -360,9 +364,9 @@ class MenuModel(
             },
             MChoice(
                 s(R.string.gfx_upscaler), s(R.string.gfx_upscaler_short),
-                listOf("FSR 1", s(R.string.gfx_upscaler_bilinear)), if (st.upscaler == Upscaler.FSR) 0 else 1,
+                listOf(s(R.string.gfx_upscaler_bilinear), "FSR 1"), if (st.upscaler == Upscaler.FSR) 1 else 0,
             ) { i ->
-                val fsr = i == 0
+                val fsr = i == 1
                 update { it.copy(upscaler = if (fsr) Upscaler.FSR else Upscaler.BILINEAR) }
                 host.setCvar("present_effect_live", if (fsr) "2" else "1")
             },
@@ -376,8 +380,11 @@ class MenuModel(
             },
             MChoice(
                 s(R.string.gfx_resolution), s(R.string.gfx_resolution_short),
-                scales.map { "$it% · " + SettingsStore.renderSize(it) }, scaleIndex, reopen = true,
-            ) { i -> update { it.copy(renderScale = scales[i]) } },
+                heights.map { SettingsStore.heightLabel(it) }, heightIndex, reopen = !renut,
+            ) { i ->
+                update { it.copy(renderHeight = heights[i]) }
+                if (renut) host.setCvar("sa2_render_height_handheld", heights[i].toString())
+            },
             MToggle(s(R.string.gfx_show_fps), s(R.string.gfx_show_fps_short), st.showFps, reopen = true) { v ->
                 update { it.copy(showFps = v) }
             },
@@ -492,7 +499,9 @@ class MenuModel(
     fun pendingReopen(): Boolean {
         val a = started
         val b = settings
-        return a.renderScale != b.renderScale || a.showFps != b.showFps ||
+        val heightNeedsReopen = a.renderer != Renderer.RENUT &&
+            SettingsStore.effectiveHeight(a.renderer, a.renderHeight) != SettingsStore.effectiveHeight(a.renderer, b.renderHeight)
+        return heightNeedsReopen || a.showFps != b.showFps ||
             a.stereoAudio != b.stereoAudio || a.pauseInBackground != b.pauseInBackground ||
             a.verboseLog != b.verboseLog || a.gpuStats != b.gpuStats || a.nintendoLayout != b.nintendoLayout
     }

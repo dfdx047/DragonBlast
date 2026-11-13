@@ -59,12 +59,12 @@
     <string name="gfx_render">Renderizado</string>
     <string name="gfx_renderer">Renderizador</string>
     <string name="gfx_renderer_short">Quién dibuja el juego.</string>
-    <string name="gfx_renderer_long">Xenia: emula la GPU de Xbox 360 (EDRAM, resolves) sobre Vulkan. Funciona en todas las GPU, pero cuesta más.\n\nRenut: renderizador nativo que dibuja el Direct3D del juego directamente en Vulkan, sin emular la GPU. Mucho más ligero. Beta: hecho para Raging Blast 2 sobre la misma base que Dragon Burst; si algo se ve mal, vuelve a Xenia.</string>
+    <string name="gfx_renderer_long">Renut (predeterminado): renderizador nativo que dibuja el Direct3D del juego directamente en Vulkan, sin emular la GPU. Mucho más ligero, y dibuja de 360p hasta 4K. Beta: hecho para Raging Blast 2 sobre la misma base que Dragon Burst.\n\nXenia: emula la GPU de Xbox 360 (EDRAM, resolves) sobre Vulkan. Más pesado y limitado a 720p; queda para comparar, o si algo se ve mal en Renut.</string>
     <string name="gfx_renderer_xenia_note">GPU emulada</string>
     <string name="gfx_renderer_renut_note">nativo, beta</string>
     <string name="gfx_resolution">Resolución</string>
     <string name="gfx_resolution_short">Tamaño interno al que dibuja el juego.</string>
-    <string name="gfx_resolution_long">Raging Blast 2 dibuja a 1280x720. Valores más bajos dibujan menos píxeles: menos calor y fotogramas más estables en móviles más débiles; luego el escalador estira la imagen a tu pantalla.\n\nSi los fotogramas bajan tras unos minutos, el móvil se está calentando y bajando la velocidad: baja un paso.</string>
+    <string name="gfx_resolution_long">El tamaño al que dibuja el juego. Raging Blast 2 se hizo para 720p (1280x720). Por encima (solo Renut: 1080p, 2K, 4K) bordes y texturas se ven más nítidos, pero la GPU trabaja más; por debajo (540p, 480p, 360p) el móvil se calienta menos y los fotogramas son más estables, y el escalador estira la imagen a tu pantalla.\n\nCon Renut cambia al momento desde el menú del juego. Xenia llega hasta 720p y lo aplica al reabrir.\n\nSi los fotogramas bajan tras unos minutos, el móvil se está calentando y bajando la velocidad: baja un paso.</string>
     <string name="gfx_aspect">Proporción</string>
     <string name="gfx_aspect_short">Cómo la imagen 16:9 llena una pantalla más ancha.</string>
     <string name="gfx_aspect_long">Raging Blast 2 dibuja una imagen 16:9. Los móviles son más anchos (20:9 o más).\n\n16:9: la forma propia del juego, con barras negras a los lados.\n\nEstirar: la misma imagen estirada a toda la pantalla, algo más ancha que el dibujo.\n\nCambia al momento, también desde el menú del juego.</string>
@@ -102,8 +102,9 @@
     <string name="menu_info_render">Dibujado a %1$s, mostrado en %2$s</string>
     <string name="gfx_upscaler">Escalador</string>
     <string name="gfx_upscaler_short">Cómo se estira la imagen a la pantalla.</string>
-    <string name="gfx_upscaler_long" formatted="false">Bilineal: simple y suave, el más ligero.\n\nFSR 1 (AMD FidelityFX Super Resolution): bordes más nítidos cuando la resolución está por debajo del 100 %, con un coste mínimo de GPU. Recomendado.</string>
+    <string name="gfx_upscaler_long">Bilineal: simple y suave, el más ligero. Recomendado de 720p para arriba.\n\nFSR 1 (AMD FidelityFX Super Resolution): bordes más nítidos cuando el juego dibuja muy por debajo de tu pantalla (540p o menos), con un coste pequeño de GPU.</string>
     <string name="gfx_upscaler_bilinear">Bilineal</string>
+    <string name="gfx_upscaler_fsr_note">más nítido en resolución baja</string>
     <string name="gfx_frames">Fotogramas</string>
     <string name="gfx_fps">Fotogramas por segundo</string>
     <string name="gfx_fps_short">60 es la velocidad del propio juego.</string>

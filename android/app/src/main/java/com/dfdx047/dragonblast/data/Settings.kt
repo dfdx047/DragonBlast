@@ -2,7 +2,6 @@ package com.dfdx047.dragonblast.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Build
 
 /** How the game window is held. */
 enum class Orientation(val key: String) { LANDSCAPE("landscape"), PORTRAIT("portrait"), SENSOR("sensor") }
@@ -40,10 +39,10 @@ data class Settings(
     // Home
     val orientation: Orientation = Orientation.LANDSCAPE,
     // Graphics
-    val renderScale: Int = 100,
-    val upscaler: Upscaler = Upscaler.FSR,
+    val renderHeight: Int = 720,
+    val upscaler: Upscaler = Upscaler.BILINEAR,
     val fpsMode: FpsMode = FpsMode.SIXTY,
-    val renderer: Renderer = Renderer.XENIA,
+    val renderer: Renderer = Renderer.RENUT,
     val aspect: AspectMode = AspectMode.ORIGINAL,
     val showFps: Boolean = false,
     val pauseInBackground: Boolean = true,
@@ -79,13 +78,13 @@ class SettingsStore(context: Context) {
     private val app = context.applicationContext
 
     fun load(): Settings {
-        val d = Settings(renderScale = defaultRenderScale(), touchPreset = TouchPreset.NORMAL)
+        val d = Settings(renderHeight = defaultRenderHeight(), touchPreset = TouchPreset.NORMAL)
         fun <E : Enum<E>> e(key: String, values: Array<E>, def: E, keyOf: (E) -> String) =
             prefs.getString(key, null)?.let { s -> values.firstOrNull { keyOf(it) == s } } ?: def
         return Settings(
             orientation = e("orientation", Orientation.entries.toTypedArray(), d.orientation) { it.key },
-            renderScale = prefs.getInt("render_scale", d.renderScale),
-            upscaler = if (prefs.getBoolean("fsr", true)) Upscaler.FSR else Upscaler.BILINEAR,
+            renderHeight = storedRenderHeight(prefs, d.renderHeight),
+            upscaler = if (prefs.getBoolean("fsr", false)) Upscaler.FSR else Upscaler.BILINEAR,
             fpsMode = if (prefs.getInt("fps_mode", 2) == 3) FpsMode.SIXTY_FG else FpsMode.SIXTY,
             renderer = e("renderer", Renderer.entries.toTypedArray(), d.renderer) { it.key },
             aspect = e("aspect", AspectMode.entries.toTypedArray(), d.aspect) { it.key },
@@ -114,7 +113,8 @@ class SettingsStore(context: Context) {
     fun save(s: Settings) {
         prefs.edit()
             .putString("orientation", s.orientation.key)
-            .putInt("render_scale", s.renderScale)
+            .putInt("render_height", s.renderHeight)
+            .putInt("render_scale", xeniaScale(s.renderHeight))
             .putBoolean("fsr", s.upscaler == Upscaler.FSR)
             .putInt("fps_mode", s.fpsMode.code)
             .putString("renderer", s.renderer.key)
@@ -147,26 +147,40 @@ class SettingsStore(context: Context) {
         if (keep != null) prefs.edit().putString("language", keep).apply()
     }
 
-    /**
-     * Starting resolution (RB2-Android's rule): handhelds with a fan render at 100 %, high-end Adreno phones
-     * at 85 %, everything else at 75 %; FSR 1 scales the picture back up.
-     */
-    private fun defaultRenderScale(): Int {
-        val maker = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
-        if (listOf("ayn", "retroid", "ayaneo", "anbernic", "odin").any { it in maker }) return 100
-        val gpu = GpuInfo.get(app)
-        return if (gpu.adrenoGeneration >= 7) 85 else 75
-    }
+    /** Starting resolution: the game's own 720p (Renut draws it at 60 FPS on a Dimensity 8300 / Mali-G615). */
+    private fun defaultRenderHeight(): Int = 720
 
     companion object {
-        val RENDER_SCALES = listOf(50, 60, 75, 85, 100)
+        /** Render heights the Renut draws at (sa2_render_height_handheld); the width follows 16:9. */
+        val RENDER_HEIGHTS = listOf(360, 480, 540, 720, 1080, 1440, 2160)
 
-        /** Internal resolution at a scale (the game renders 1280x720); same rounding as src/rb2_resolution.h. */
-        fun renderSize(scale: Int): String {
-            val s = minOf(100, scale)
-            val w = maxOf(640, (1280 * s / 100 + 8) and 15.inv())
-            val h = maxOf(360, (720 * s / 100 + 8) and 15.inv())
-            return "${w}x$h"
+        /** Xenia's emulated GPU only draws at or below the game's 1280x720 (rb2_render_scale 50-100). */
+        const val XENIA_MAX_HEIGHT = 720
+
+        /** The heights a renderer offers. */
+        fun heightsFor(renderer: Renderer): List<Int> =
+            if (renderer == Renderer.RENUT) RENDER_HEIGHTS else RENDER_HEIGHTS.filter { it <= XENIA_MAX_HEIGHT }
+
+        /** The height a renderer really draws at for the chosen one. */
+        fun effectiveHeight(renderer: Renderer, height: Int): Int =
+            if (renderer == Renderer.RENUT) height else minOf(height, XENIA_MAX_HEIGHT)
+
+        /** rb2_render_scale (Xenia, percent of 1280x720) for a height. */
+        fun xeniaScale(height: Int): Int = (height * 100 / 720).coerceIn(50, 100)
+
+        /** "1080p · 1920x1080", "2K · 2560x1440", "4K · 3840x2160". */
+        fun heightLabel(height: Int): String {
+            val name = when (height) { 1440 -> "2K"; 2160 -> "4K"; else -> "${height}p" }
+            return "$name · ${(height * 16 + 8) / 9}x$height"
+        }
+
+        /** The saved height, or (older saves) the nearest one to the saved percent of 720p. */
+        fun storedRenderHeight(prefs: SharedPreferences, default: Int): Int {
+            val h = prefs.getInt("render_height", 0)
+            if (h in RENDER_HEIGHTS) return h
+            if (!prefs.contains("render_scale")) return default
+            val old = prefs.getInt("render_scale", 100) * 720 / 100
+            return RENDER_HEIGHTS.filter { it <= XENIA_MAX_HEIGHT }.minBy { kotlin.math.abs(it - old) }
         }
     }
 }

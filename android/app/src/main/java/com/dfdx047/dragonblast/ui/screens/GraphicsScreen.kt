@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -31,59 +30,42 @@ import com.dfdx047.dragonblast.ui.components.SettingSlider
 import com.dfdx047.dragonblast.ui.components.SettingSwitch
 import com.dfdx047.dragonblast.ui.components.help
 
-/** Quick presets: resolution + upscaler in one tap. */
-private enum class GfxPreset(val scale: Int, val upscaler: Upscaler) {
-    LIGHT(60, Upscaler.FSR), BALANCED(75, Upscaler.FSR), QUALITY(100, Upscaler.BILINEAR)
-}
-
 @Composable
 fun GraphicsScreen(vm: LauncherViewModel) {
     val s = vm.settings
-    val scales = SettingsStore.RENDER_SCALES
     CardsPage {
-        SectionCard(stringResource(R.string.gfx_presets), Icons.Outlined.AutoAwesome, subtitle = stringResource(R.string.gfx_presets_sub)) {
-            val current = GfxPreset.entries.firstOrNull { it.scale == s.renderScale && it.upscaler == s.upscaler }
-            ChoiceRow(
-                title = null,
-                options = listOf(
-                    Choice(GfxPreset.LIGHT, stringResource(R.string.preset_light), "60% · FSR"),
-                    Choice(GfxPreset.BALANCED, stringResource(R.string.preset_balanced), "75% · FSR"),
-                    Choice(GfxPreset.QUALITY, stringResource(R.string.preset_quality), "100%"),
-                ),
-                selected = current,
-                onSelect = { p -> vm.update { it.copy(renderScale = p!!.scale, upscaler = p.upscaler) } },
-            )
-        }
-
         SectionCard(stringResource(R.string.gfx_render), Icons.Outlined.Wallpaper) {
             ChoiceRow(
                 title = stringResource(R.string.gfx_renderer),
                 help = help(R.string.gfx_renderer_short, R.string.gfx_renderer_long),
                 options = listOf(
-                    Choice(Renderer.XENIA, "Xenia", stringResource(R.string.gfx_renderer_xenia_note)),
                     Choice(Renderer.RENUT, "Renut", stringResource(R.string.gfx_renderer_renut_note)),
+                    Choice(Renderer.XENIA, "Xenia", stringResource(R.string.gfx_renderer_xenia_note)),
                 ),
                 selected = s.renderer,
                 onSelect = { r -> vm.update { it.copy(renderer = r) } },
             )
             Divider()
-            val idx = scales.indexOf(s.renderScale).let { if (it < 0) scales.size - 1 else it }
+            // Renut: 360p to 4K; Xenia: up to the game's 720p.
+            val heights = SettingsStore.heightsFor(s.renderer)
+            val shown = SettingsStore.effectiveHeight(s.renderer, s.renderHeight)
+            val idx = heights.indexOf(shown).let { if (it < 0) heights.indexOf(720) else it }
             SettingSlider(
                 title = stringResource(R.string.gfx_resolution),
                 help = help(R.string.gfx_resolution_short, R.string.gfx_resolution_long),
                 value = idx.toFloat(),
-                range = 0f..(scales.size - 1).toFloat(),
-                steps = scales.size - 2,
-                label = { v -> scales[v.toInt().coerceIn(0, scales.size - 1)].let { "$it% · ${SettingsStore.renderSize(it)}" } },
-                onChange = { v -> vm.update { it.copy(renderScale = scales[v.toInt().coerceIn(0, scales.size - 1)]) } },
+                range = 0f..(heights.size - 1).toFloat(),
+                steps = heights.size - 2,
+                label = { v -> SettingsStore.heightLabel(heights[v.toInt().coerceIn(0, heights.size - 1)]) },
+                onChange = { v -> vm.update { it.copy(renderHeight = heights[v.toInt().coerceIn(0, heights.size - 1)]) } },
             )
             Divider()
             ChoiceRow(
                 title = stringResource(R.string.gfx_upscaler),
                 help = help(R.string.gfx_upscaler_short, R.string.gfx_upscaler_long),
                 options = listOf(
-                    Choice(Upscaler.BILINEAR, stringResource(R.string.gfx_upscaler_bilinear)),
-                    Choice(Upscaler.FSR, "FSR 1", stringResource(R.string.recommended)),
+                    Choice(Upscaler.BILINEAR, stringResource(R.string.gfx_upscaler_bilinear), stringResource(R.string.recommended)),
+                    Choice(Upscaler.FSR, "FSR 1", stringResource(R.string.gfx_upscaler_fsr_note)),
                 ),
                 selected = s.upscaler,
                 onSelect = { u -> vm.update { it.copy(upscaler = u) } },

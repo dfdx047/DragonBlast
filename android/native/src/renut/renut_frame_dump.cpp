@@ -15,7 +15,7 @@
 REXCVAR_DEFINE_BOOL(swordman_renut_frame_dump, false, "SwordMan",
                     "Renut (diagnóstico): com files/frame_dump.req, escreve o frame seguinte em "
                     "logs/frame_dump_<N>.txt (cada draw, clear e resolve com shaders, alvos e texturas)")
-    .lifecycle(rex::cvar::Lifecycle::kInitOnly);
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);  // Dragon Blast: live
 REXCVAR_DEFINE_STRING(swordman_renut_frame_dump_ps, "", "SwordMan",
                       "Renut (diagnóstico, com swordman_renut_frame_dump): em vez do pedido por ficheiro, escreve os "
                       "frames em que este pixel shader (hash em hex, os primeiros 8 dígitos) desenha, um por variante "
@@ -57,10 +57,7 @@ void WriteBuffer(uint64_t frame) {
 
 }  // namespace
 
-bool On() {
-  static const bool on = REXCVAR_GET(swordman_renut_frame_dump);
-  return on;
-}
+bool On() { return REXCVAR_GET(swordman_renut_frame_dump); }  // Dragon Blast: live
 
 bool Active(uint64_t frame) {
   if (!On()) return false;

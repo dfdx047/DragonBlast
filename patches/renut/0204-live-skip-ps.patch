@@ -1,0 +1,49 @@
+Dragon Blast (2026-11-13): swordman_renut_skip_ps changes live (the list is parsed again when its text changes), to
+map Raging Blast 2's effects in one fight: skip a pixel shader's draws, measure the GPU time, look at the picture.
+
+diff --git a/app/src/renut_engine/gpu/render/draw.cpp b/app/src/renut_engine/gpu/render/draw.cpp
+--- a/app/src/renut_engine/gpu/render/draw.cpp
++++ b/app/src/renut_engine/gpu/render/draw.cpp
+@@ -93,7 +93,7 @@
+                       "vertex layouts and patched vfetches are logged");
+ REXCVAR_DEFINE_STRING(swordman_renut_skip_ps, "", "SwordMan",
+                       "Renut (diagnostic): pixel shader hashes (hex, comma separated) whose draws are skipped")
+-    .lifecycle(rex::cvar::Lifecycle::kInitOnly);
++    .lifecycle(rex::cvar::Lifecycle::kHotReload);  // Dragon Blast (renut/0204): live
+ 
+ REXCVAR_DEFINE_STRING(banjo_renut_diag_blend_skip_exclude, "", "Banjo/Renut",
+                       "Diagnostic: pixel shader hashes (hex, comma separated) banjo_gpu_blend_skip leaves alone");
+@@ -1214,9 +1214,13 @@
+ // banjo-nx (banjo_renut_diag_gpu_shaders, package 28b): the draw's pass split by its pixel shader and blending.
+ // swordman_renut_skip_ps, parsed once.
+ bool SkipPixelShader(uint64_t hash) {
+-  static const std::unordered_set<uint64_t> skip = [] {
+-    std::unordered_set<uint64_t> out;
+-    const std::string list = REXCVAR_GET(swordman_renut_skip_ps);
++  // Dragon Blast (renut/0204): the list changes live (render thread only); parsed again when the text changes.
++  static std::string text;
++  static std::unordered_set<uint64_t> skip;
++  const std::string &list = REXCVAR_GET(swordman_renut_skip_ps);
++  if (list != text) {
++    text = list;
++    skip.clear();
+     size_t start = 0;
+     while (start < list.size()) {
+       size_t end = list.find(',', start);
+@@ -1224,13 +1228,11 @@
+         end = list.size();
+       const std::string item = list.substr(start, end - start);
+       if (!item.empty())
+-        out.insert(std::strtoull(item.c_str(), nullptr, 16));
++        skip.insert(std::strtoull(item.c_str(), nullptr, 16));
+       start = end + 1;
+     }
+-    if (!out.empty())
+-      RGPU_INFO("swordman_renut_skip_ps: {} pixel shaders not drawn", out.size());
+-    return out;
+-  }();
++    RGPU_INFO("swordman_renut_skip_ps: {} pixel shaders not drawn", skip.size());
++  }
+   return !skip.empty() && skip.count(hash);
+ }
+ 
