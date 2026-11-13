@@ -20,19 +20,30 @@
   extras de inicialização, limpar cache de shaders, restaurar configurações, relatório do aparelho.
 - Cada configuração: legenda curta + botão "!" com a explicação longa. 240 textos em EN / PT-BR / ES.
 
-## Fase 2 — jogo rodando no Poco (próxima)
-1. Montar o SDK (`prepare_sdk.sh`, patches 0001–0037 do RB2-Android) e o codegen com o `default.xex` do desenvolvedor
-   (ISO USA Rev 1 — ainda não está no PC nem no Poco).
-2. Ligar as chaves novas da launcher no `LaunchConfig`/`GameActivity`: orientação, pausa, áudio estéreo, log
-   detalhado, args extras, estatísticas da GPU.
-3. Overlay in-game: menu lateral adaptado ao celular (resolução ao vivo, FPS, geração de quadros, controles, sair),
-   substituindo o `InGameMenu.java`.
-4. Controles na tela (não existem no RB2-Android): portar o TouchPadView do DragonRage / os controles do Dragon Burst
-   com o visual do Dragon Blast; Pro (analógico dinâmico, áreas maiores, deslizar com faixa neutra e histerese),
-   Normal, Casual; troca automática de layout menu/luta pelo estado do jogo.
-5. Primeiras medições no Poco (Mali-G615): driver do sistema vs PanVK.
+## Fase 2 — jogo rodando no Poco (2026-11-13, em andamento)
+Feito:
+- SDK montado em `build/rexglue-sdk-android` (patches 0001–0041; 0038 versão do SDK, 0039/0040 Mali-G615 vindos do
+  Dragon Burst, 0041 controle de toque = jogador 1). Codegen com o `default.xex` USA Rev 1 do desenvolvedor.
+- O jogo roda no Poco com o driver Mali do sistema: abertura e menus 50–60 fps, luta (Goku x Vegeta, platôs)
+  20–40 fps. Chaves da launcher ligadas no `LaunchConfig`/`GameActivity` (orientação, pausa, estéreo, log, overlay,
+  args extras).
+- Controles na tela (commit 39e8270), base Dragon Burst com visual próprio: analógico dinâmico, Pro / Normal /
+  Casual, estilos Dragon / Xbox / PlayStation / Nintendo, canhoto, editor de layout, prévia ao vivo na aba Controles.
+  Três esquemas de luta: Raging Blast (botões do jogo; os 4 Super Attacks num disco radial = analógico direito),
+  Moderno (um toque: sway, vanishing, counter, agarrar, Ultimate, carga, subir/descer) e Tenkaichi 3 (posições do BT3,
+  selos △○✕□). Testado no Poco: menus, seleção de personagens e luta só pelo toque.
 
-## Fase 3 — esquema Tenkaichi 3 na luta
+Falta:
+1. Troca automática menu/luta: achar no código/memória do jogo o estado "em luta" (`NativeGameState.fightFlag`). Hoje
+   o botão ⇄ troca o layout à mão.
+2. Conferir no jogo a página que o RT abre (trocar / transformar / fusão) e, se fizer sentido, separar os botões.
+3. `--ez play true` vindo de fora é ignorado enquanto a launcher ainda verifica a instalação (esperar a verificação).
+4. Menu lateral in-game no visual do Dragon Blast (substituir o `InGameMenu.java`).
+5. Medições no Poco: driver do sistema vs PanVK / drivers Mali da lista; o aparelho esquenta.
+
+## Fase 3 — Tenkaichi 3 no controle físico
+- Na tela o esquema já existe (fase 2). Falta o controle físico: remapear os botões do controle para as posições do
+  BT3 só durante a luta.
 - Pesquisa: mapa completo dos comandos do RB2 e do BT3 (rush, ki, guarda, dash, carga, transformações, especiais,
   combos de direção); onde o RB2 lê o controle (código gerado: leitura XInput → estado de botões por jogador) e como
   saber que está numa luta (estado do jogo). Remapear só na luta; menus intactos.

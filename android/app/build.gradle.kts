@@ -96,6 +96,10 @@ android {
 // Launcher-only: the game shell needs SDL's classes.
 if (uiOnly) {
     android.sourceSets.getByName("main").java.filter.exclude("org/rb2recomp/**")
+    // Touch pad glue that talks to SDL's controller manager (absent without the SDK).
+    android.sourceSets.getByName("main").java.filter.exclude("org/libsdl/**")
+    android.sourceSets.getByName("main").java.filter.exclude("com/dfdx047/dragonblast/game/HelperEngine.kt")
+    android.sourceSets.getByName("main").java.filter.exclude("com/dfdx047/dragonblast/game/TouchOverlay.kt")
 }
 
 kotlin {

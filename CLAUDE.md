@@ -29,17 +29,22 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 - Textos: `python3 tools/launcher/gen_strings.py android/app/src/main/res` gera `values/`, `values-pt/`, `values-es/` (EN, PT-BR, ES; segue o celular,
   outro idioma → inglês). Ícone: `python3 tools/launcher/icon_gen.py .` (fontes SVG em `docs/art/`).
 - Tudo o que um teste gera fica em `build/` (ignorado): `build/shots`, `build/apk`, `build/tmp`.
+- Controles na tela: `controls/ControlModel.kt` (layouts dos três esquemas, ajudantes, store em `files/controls`),
+  `game/TouchControlsView.kt` (desenho e toque), `game/HelperEngine.kt` (60 Hz → `org/libsdl/app/DragonBlastPad.java`,
+  controle SDL virtual VID 0x1209 / PID 0xDB01), `game/TouchOverlay.kt` (liga tudo no `GameActivity`),
+  `controls/ControlsEditorActivity.kt`. No build só-launcher essas três peças do SDL ficam de fora.
 
 ## Build
 - Só a launcher (sem o SDK ao lado do repositório o build entra sozinho nesse modo):
   `cd android && ./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - Jogo completo (tudo dentro de `build/`, com `TMPDIR=build/tmp`):
-  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + 37 patches).
+  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0041).
      Precisa do `spirv-cross`: sem pacote no sistema, ele foi compilado em `build/third_party/spirv-cross-build`
      (tag vulkan-sdk-1.4.304.0) e o script o encontra sozinho.
   2. `tools/android/build_host_cli.sh` (recompilador `rexglue` para o PC).
   3. Disco extraído em `build/game` (`python3 tools/android/xdvdfs.py <iso> build/game`);
-     `tools/android/codegen.sh build/game` → `android/codegen/`.
+     `tools/android/codegen.sh build/game` → `android/codegen/`. O codegen só usa o `default.xex`: depois dele o
+     resto do disco (5,3 GB) pode sair do PC; no Poco ele fica em `files/game`.
   4. `tools/android/build_native.sh` (NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema) e `build_apk.sh`.
      Ou tudo de uma vez: `RB2_GAME=build/game tools/android/rebuild.sh <tag>` → `build/apk/`.
   - `default.xex` suportado: 7 151 616 bytes, SHA-256 `d0291e64…e989c` (USA Rev 1).
