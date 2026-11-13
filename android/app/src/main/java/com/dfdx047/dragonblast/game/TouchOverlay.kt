@@ -100,6 +100,24 @@ class TouchOverlay(private val activity: Activity, private val parent: ViewGroup
         }
     }
 
+    /** Fight layout on screen (true) or the menu layout. */
+    val isFightLayout: Boolean get() = fight
+
+    fun showFightLayout(toFight: Boolean) {
+        if (toFight != fight) switchLayout(toFight)
+    }
+
+    /** Settings or saved layouts changed (in-game menu, editor): read them again. */
+    fun reload() {
+        settings = SettingsStore(activity).load()
+        view?.let {
+            it.releaseAll()
+            it.applySettings(settings)
+            it.layout = currentLayout()
+        }
+        updateVisibility()
+    }
+
     private fun ensurePad() {
         if (!DragonBlastPad.isAttached() && SystemClock.uptimeMillis() - startedAt > 1500) attachPad()
     }

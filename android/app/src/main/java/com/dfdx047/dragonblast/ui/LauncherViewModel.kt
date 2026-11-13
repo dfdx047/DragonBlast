@@ -91,6 +91,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val ctx = getApplication<Application>()
             withContext(Dispatchers.Main) {
                 install = st
+                // A play request that came while the files were still being checked (game menu "restart").
+                pendingPlay?.let { ctx2 ->
+                    pendingPlay = null
+                    if (st.playable) play(ctx2)
+                }
                 installedDrivers = list
                 driverChoice = DriverStore.choice(ctx)
                 activeDriver = DriverStore.activeName(ctx)
@@ -180,12 +185,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private var pendingPlay: Context? = null
+
     fun play(context: Context) {
         if (!engineAvailable) {
             showNoEngine = true
             return
         }
-        if (install?.playable != true) return
+        val st = install
+        if (st == null) {
+            // Still scanning the game files: play once the scan ends.
+            pendingPlay = context
+            return
+        }
+        if (!st.playable) return
         val intent = Intent().setClassName(context, "org.rb2recomp.android.GameActivity")
         context.startActivity(intent)
     }

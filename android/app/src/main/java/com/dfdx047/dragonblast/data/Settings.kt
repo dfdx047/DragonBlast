@@ -13,6 +13,9 @@ enum class FpsMode(val code: Int) { SIXTY(2), SIXTY_FG(3) }
 enum class Upscaler(val key: String) { BILINEAR("bilinear"), FSR("fsr") }
 
 /** Which renderer draws the game. Renut (native Direct3D -> Vulkan) is being written for this game. */
+/** How the 16:9 picture fills a wider phone screen: black side bars, or stretched to the whole width. */
+enum class AspectMode(val key: String) { ORIGINAL("16:9"), STRETCH("stretch") }
+
 enum class Renderer(val key: String) { XENIA("xenia"), RENUT("renut") }
 
 enum class TouchMode(val key: String) { OFF("off"), AUTO("auto"), ALWAYS("always") }
@@ -41,6 +44,7 @@ data class Settings(
     val upscaler: Upscaler = Upscaler.FSR,
     val fpsMode: FpsMode = FpsMode.SIXTY,
     val renderer: Renderer = Renderer.XENIA,
+    val aspect: AspectMode = AspectMode.ORIGINAL,
     val showFps: Boolean = false,
     val pauseInBackground: Boolean = true,
     val stereoAudio: Boolean = true,
@@ -84,6 +88,7 @@ class SettingsStore(context: Context) {
             upscaler = if (prefs.getBoolean("fsr", true)) Upscaler.FSR else Upscaler.BILINEAR,
             fpsMode = if (prefs.getInt("fps_mode", 2) == 3) FpsMode.SIXTY_FG else FpsMode.SIXTY,
             renderer = e("renderer", Renderer.entries.toTypedArray(), d.renderer) { it.key },
+            aspect = e("aspect", AspectMode.entries.toTypedArray(), d.aspect) { it.key },
             showFps = prefs.getBoolean("show_fps", false),
             pauseInBackground = prefs.getBoolean("pause_background", true),
             stereoAudio = prefs.getBoolean("audio_stereo", true),
@@ -113,6 +118,7 @@ class SettingsStore(context: Context) {
             .putBoolean("fsr", s.upscaler == Upscaler.FSR)
             .putInt("fps_mode", s.fpsMode.code)
             .putString("renderer", s.renderer.key)
+            .putString("aspect", s.aspect.key)
             .putBoolean("show_fps", s.showFps)
             .putBoolean("pause_background", s.pauseInBackground)
             .putBoolean("audio_stereo", s.stereoAudio)

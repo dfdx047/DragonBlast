@@ -24,7 +24,7 @@ namespace {
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "thps_live", __VA_ARGS__)
 
-constexpr const char* kFile = "/sdcard/Android/data/org.rb2recomp.android/files/live_cvars.txt";
+constexpr const char* kFile = "/sdcard/Android/data/com.dfdx047.dragonblast/files/live_cvars.txt";
 
 bool Set(const std::string& name, const std::string& value) {
   const bool ok = rex::cvar::SetFlagByName(name, value);

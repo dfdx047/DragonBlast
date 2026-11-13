@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.dfdx047.dragonblast.R
 import com.dfdx047.dragonblast.data.FpsMode
 import com.dfdx047.dragonblast.data.Renderer
+import com.dfdx047.dragonblast.data.AspectMode
 import com.dfdx047.dragonblast.data.SettingsStore
 import com.dfdx047.dragonblast.data.Upscaler
 import com.dfdx047.dragonblast.ui.LauncherViewModel
@@ -86,6 +87,17 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                 ),
                 selected = s.upscaler,
                 onSelect = { u -> vm.update { it.copy(upscaler = u) } },
+            )
+            Divider()
+            ChoiceRow(
+                title = stringResource(R.string.gfx_aspect),
+                help = help(R.string.gfx_aspect_short, R.string.gfx_aspect_long),
+                options = listOf(
+                    Choice(AspectMode.ORIGINAL, stringResource(R.string.aspect_original), stringResource(R.string.aspect_original_note)),
+                    Choice(AspectMode.STRETCH, stringResource(R.string.aspect_stretch), stringResource(R.string.aspect_stretch_note)),
+                ),
+                selected = s.aspect,
+                onSelect = { a -> vm.update { it.copy(aspect = a) } },
             )
         }
 

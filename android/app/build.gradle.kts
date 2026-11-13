@@ -100,6 +100,7 @@ if (uiOnly) {
     android.sourceSets.getByName("main").java.filter.exclude("org/libsdl/**")
     android.sourceSets.getByName("main").java.filter.exclude("com/dfdx047/dragonblast/game/HelperEngine.kt")
     android.sourceSets.getByName("main").java.filter.exclude("com/dfdx047/dragonblast/game/TouchOverlay.kt")
+    android.sourceSets.getByName("main").java.filter.exclude("com/dfdx047/dragonblast/game/GameMenu.kt")
 }
 
 kotlin {

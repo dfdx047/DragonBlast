@@ -332,6 +332,9 @@ final class LaunchConfig {
         // The guest 60 Hz vblank follows the display's own vsync (AChoreographer).
         defaults.add("--gpu_vblank_display_lock=true");
         defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
+        // 16:9 with side bars, or stretched over the whole (wider) screen; the game menu changes it live.
+        defaults.add("--present_letterbox=" + !"stretch".equals(
+                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9")));
         // Internal resolution (src/rb2_resolution.h); the presenter scales it to the screen.
         defaults.add("--rb2_render_scale=" + renderScale(context));
         android.content.SharedPreferences opts = context.getSharedPreferences("options", Context.MODE_PRIVATE);

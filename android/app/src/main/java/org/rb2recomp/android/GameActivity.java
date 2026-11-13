@@ -51,16 +51,7 @@ public class GameActivity extends SDLActivity {
                             : "LandscapeLeft LandscapeRight", true);
         } catch (Exception ignored) {
         }
-        switch (orientation) {
-            case "portrait":
-                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
-                break;
-            case "sensor":
-                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
-                break;
-            default:
-                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        }
+        applyOrientation(orientation);
         try {
             // Drivers bundled in the APK (assets/drivers/<name>/<file>).
             android.content.res.AssetManager assets = getAssets();
@@ -140,39 +131,9 @@ public class GameActivity extends SDLActivity {
         }
         super.onCreate(savedInstanceState);
         if (mLayout != null && !mBrokenLibraries) {
-            menu = new InGameMenu(this, mLayout, LaunchConfig.renderScale(this), new InGameMenu.Native() {
-                @Override
-                public boolean setCvar(String name, String value) {
-                    try {
-                        return nativeSetCvar(name, value);
-                    } catch (UnsatisfiedLinkError e) {
-                        return false;  // native side not loaded yet
-                    }
-                }
-
-                @Override
-                public void shown(boolean open) {
-                    try {
-                        nativeSystemUi(open);
-                    } catch (UnsatisfiedLinkError ignored) {
-                    }
-                    hideSystemBars();
-                    if (touch != null) {
-                        touch.setSideMenuOpen(open);
-                    }
-                    if (!open && mSurface != null) {
-                        mSurface.requestFocus();
-                    }
-                }
-
-                @Override
-                public void fpsModeChanged(int mode) {
-                    requestDisplayRate(mode == 3);
-                    getWindow().getDecorView().postDelayed(GameActivity.this::hideSystemBars, 800);
-                }
-            });
             touch = new com.dfdx047.dragonblast.game.TouchOverlay(this, mLayout);
             touch.onCreate();
+            menu = new com.dfdx047.dragonblast.game.GameMenu(this, mLayout, new MenuHost(), touch);
             // Let the edge swipes through to the app instead of the system back gesture (Android
             // allows up to 200 dp per edge; elsewhere the back gesture opens the menu too).
             final View decor = getWindow().getDecorView();
@@ -221,12 +182,11 @@ public class GameActivity extends SDLActivity {
 
     private static final int EDGE_DP = 36;      // a swipe must start this close to the left/right edge
     private static final int SWIPE_DP = 48;     // ... and travel this far inwards
-    private InGameMenu menu;
+    private com.dfdx047.dragonblast.game.GameMenu menu;
     /** Dragon Blast on-screen controls (com.dfdx047.dragonblast.game). */
     private com.dfdx047.dragonblast.game.TouchOverlay touch;
     private boolean edgeTracking, edgeFromRight, swallowGesture;
     private float edgeDownX, edgeDownY;
-    private float hatX, hatY;
 
     private int dp(int value) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
@@ -234,8 +194,116 @@ public class GameActivity extends SDLActivity {
     }
 
     private void openMenu(boolean fromRight) {
+        // The panel always comes in from the left, whichever edge was swiped.
         if (menu != null && !menu.isOpen()) {
-            menu.open(fromRight);
+            menu.open();
+        }
+    }
+
+    /** What the in-game menu (com.dfdx047.dragonblast.game.GameMenu) asks of this window. */
+    private final class MenuHost implements com.dfdx047.dragonblast.game.GameMenuHost {
+        @Override
+        public boolean setCvar(String name, String value) {
+            try {
+                return nativeSetCvar(name, value);
+            } catch (UnsatisfiedLinkError e) {
+                return false;  // native side not loaded yet
+            }
+        }
+
+        @Override
+        public void menuShown(boolean open) {
+            try {
+                nativeSystemUi(open);
+            } catch (UnsatisfiedLinkError ignored) {
+            }
+            hideSystemBars();
+            if (touch != null) {
+                touch.setSideMenuOpen(open);
+            }
+            if (!open && mSurface != null) {
+                mSurface.requestFocus();
+            }
+        }
+
+        @Override
+        public void fpsModeChanged(int mode) {
+            requestDisplayRate(mode == 3);
+            getWindow().getDecorView().postDelayed(GameActivity.this::hideSystemBars, 800);
+        }
+
+        @Override
+        public void orientationChanged(String key) {
+            applyOrientation(key);
+        }
+
+        @Override
+        public void restartGame() {
+            leave(true);
+        }
+
+        @Override
+        public void exitToLauncher() {
+            leave(false);
+        }
+
+        @Override
+        public void openControlsEditor(boolean menuLayout) {
+            startActivity(new android.content.Intent(GameActivity.this,
+                    com.dfdx047.dragonblast.controls.ControlsEditorActivity.class)
+                    .putExtra(com.dfdx047.dragonblast.controls.ControlsEditorActivity.EXTRA_MENU, menuLayout));
+        }
+
+        @Override
+        public void exportLogs() {
+            try {
+                startActivity(com.dfdx047.dragonblast.data.Diagnostics.INSTANCE.exportLogs(GameActivity.this,
+                        new com.dfdx047.dragonblast.data.SettingsStore(GameActivity.this).load()));
+            } catch (Throwable t) {
+                android.util.Log.w("rb2", "log export failed", t);
+            }
+        }
+
+        @Override
+        public java.util.List<String> sessionInfo() {
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            android.content.SharedPreferences opts = getSharedPreferences("options", MODE_PRIVATE);
+            lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_renderer,
+                    "renut".equals(opts.getString("renderer", "xenia")) ? "Renut" : "Xenia"));
+            lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_gpu, LaunchConfig.gpuName(GameActivity.this)));
+            lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_driver, LaunchConfig.driverLabel(GameActivity.this)));
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            lines.add(getString(com.dfdx047.dragonblast.R.string.menu_info_render,
+                    LaunchConfig.renderSize(LaunchConfig.renderScale(GameActivity.this)),
+                    Math.max(dm.widthPixels, dm.heightPixels) + "x" + Math.min(dm.widthPixels, dm.heightPixels)));
+            return lines;
+        }
+    }
+
+    /** Ends this game process: back to the launcher, which starts the game again when [play]. */
+    private void leave(boolean play) {
+        android.content.Intent intent = new android.content.Intent()
+                .setClassName(this, "com.dfdx047.dragonblast.LauncherActivity");
+        if (play) {
+            intent.putExtra("play", true);
+        }
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+        // The game process cannot unload its native libraries: end it; the launcher starts a new one.
+        android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    private void applyOrientation(String orientation) {
+        switch (orientation) {
+            case "portrait":
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+                break;
+            case "sensor":
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+                break;
+            default:
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
     }
 
@@ -299,18 +367,27 @@ public class GameActivity extends SDLActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // The system back (key or edge gesture, which HyperOS and others deliver as KEYCODE_BACK) and the
+        // controller's Guide button open the menu. SDL would otherwise take BACK for the game. The Back / View
+        // button of a real controller also reports KEYCODE_BACK: that one stays the game's.
+        if (menu != null && !menu.isOpen()) {
+            int code = event.getKeyCode();
+            InputDevice dev = event.getDevice();
+            boolean fromPad = dev != null && !dev.isVirtual()
+                    && (event.getSource() & (InputDevice.SOURCE_GAMEPAD | InputDevice.SOURCE_JOYSTICK)) != 0;
+            if ((code == KeyEvent.KEYCODE_BACK && !fromPad) || code == KeyEvent.KEYCODE_BUTTON_MODE) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    openMenu(false);
+                }
+                return true;
+            }
+        }
         if (touch != null) {
             touch.onPhysicalInput(event);
         }
         if (menu != null && menu.isOpen()) {
-            if (menu.onKey(event)) {
-                if (!menu.isOpen() && mSurface != null) {
-                    mSurface.requestFocus();
-                }
-                return true;
-            }
-            // D-pad and the rest: to the focused menu button, never to the game.
-            getWindow().superDispatchKeyEvent(event);
+            // Everything goes to the menu, never to the game.
+            menu.onKey(event);
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -322,23 +399,8 @@ public class GameActivity extends SDLActivity {
             touch.onPhysicalInput(ev);
         }
         if (menu != null && menu.isOpen()) {
-            // Sticks stay away from the game; a d-pad reported as a hat moves the menu focus.
-            if ((ev.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
-                    && ev.getActionMasked() == MotionEvent.ACTION_MOVE) {
-                float x = ev.getAxisValue(MotionEvent.AXIS_HAT_X);
-                float y = ev.getAxisValue(MotionEvent.AXIS_HAT_Y);
-                int key = 0;
-                if (x < -0.5f && hatX >= -0.5f) key = KeyEvent.KEYCODE_DPAD_LEFT;
-                else if (x > 0.5f && hatX <= 0.5f) key = KeyEvent.KEYCODE_DPAD_RIGHT;
-                else if (y < -0.5f && hatY >= -0.5f) key = KeyEvent.KEYCODE_DPAD_UP;
-                else if (y > 0.5f && hatY <= 0.5f) key = KeyEvent.KEYCODE_DPAD_DOWN;
-                hatX = x;
-                hatY = y;
-                if (key != 0) {
-                    getWindow().superDispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, key));
-                    getWindow().superDispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, key));
-                }
-            }
+            // Sticks and the d-pad (hat) move through the menu, never reach the game.
+            menu.onMotion(ev);
             return true;
         }
         return super.dispatchGenericMotionEvent(ev);
@@ -416,6 +478,13 @@ public class GameActivity extends SDLActivity {
             ((android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE))
                     .registerDisplayListener(displayListener, null);
         }
+        // Back from the controls editor (or the launcher): read the settings and layouts again.
+        if (touch != null) {
+            touch.reload();
+        }
+        if (menu != null) {
+            menu.refresh();
+        }
         requestDisplayRate(LaunchConfig.fpsMode(this) == 3
                 || new java.io.File(LaunchConfig.root(this), "highrefresh.txt").exists());
         // A display mode switch can bring the system bars back: hide them again once it settled.
@@ -435,6 +504,9 @@ public class GameActivity extends SDLActivity {
         if (touch != null) {
             touch.onDestroy();
             touch = null;
+        }
+        if (menu != null) {
+            menu.destroy();
         }
         super.onDestroy();
     }
