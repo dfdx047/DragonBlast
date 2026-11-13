@@ -139,11 +139,11 @@
     <string name="ctl_scheme_sub">Os menus continuam com os comandos do jogo</string>
     <string name="ctl_scheme">Esquema</string>
     <string name="ctl_scheme_short">Como os botões da luta ficam na tela.</string>
-    <string name="ctl_scheme_long">Raging Blast 2: os comandos do próprio jogo, botão por botão. Os quatro Super Attacks ficam num disco só: arraste para uma direção para escolher, ou só toque para o primeiro.\n\nModerno: um toque por ação, como nos Dragon Ball mais novos. Sway, Vanishing, Counter e Agarrar (que no controle são Guarda + um botão) ganham botões próprios, assim como o Ultimate, a carga de ki, subir e descer.\n\nTenkaichi 3: os botões ficam onde estavam no Budokai Tenkaichi 3 (soco à esquerda, ki em cima, guarda à direita, dash embaixo, R1/R2 para voar) e mandam os golpes equivalentes do Raging Blast 2.\n\nCada esquema guarda o seu próprio layout no editor. Os menus usam sempre o layout de menu.</string>
+    <string name="ctl_scheme_long">Raging Blast 2: os comandos do próprio jogo, botão por botão. Os quatro Super Attacks ficam num disco só: arraste para uma direção para escolher, ou só toque para o primeiro.\n\nModerno: um toque por ação, como nos Dragon Ball mais novos. Sway, Vanishing, Counter e Agarrar (que no controle são Guarda + um botão) ganham botões próprios, assim como o Ultimate, a carga de ki, subir e descer.\n\nTenkaichi 3: a luta se joga como no Budokai Tenkaichi 3, na tela e no controle físico: □ soco, △ rajada de ki, ○ guarda, ✕ dash, R1 / R2 sobe / desce, segurar L2 carrega o ki, L2+○ Blast 1, L2+△ Blast 2 (com ↑ → ← os outros Super Attacks), L2+↓△ Ultimate, R3 transforma. O jogo entende como os golpes dele; os menus e a pausa continuam com os botões normais.\n\nCada esquema guarda o seu próprio layout no editor. Os menus usam sempre o layout de menu.</string>
     <string name="ctl_scheme_original">original</string>
     <string name="ctl_scheme_modern">Moderno</string>
     <string name="ctl_scheme_modern_note">um toque</string>
-    <string name="ctl_scheme_bt3_note">posições do BT3</string>
+    <string name="ctl_scheme_bt3_note">comandos do BT3</string>
     <string name="ctl_edit">Editar layout</string>
     <string name="ctl_edit_menu">Layout de menu</string>
     <string name="editor_hint">Arraste os botões · toque num para editar</string>

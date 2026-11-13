@@ -140,11 +140,11 @@
     <string name="ctl_scheme_sub">Menus always keep the game\'s controls</string>
     <string name="ctl_scheme">Scheme</string>
     <string name="ctl_scheme_short">How the fight buttons are laid out on the screen.</string>
-    <string name="ctl_scheme_long">Raging Blast 2: the game\'s own controls, button by button. The four Super Attacks are on one disc: drag towards a direction to pick one, or just tap it for the first.\n\nModern: one tap per action, like newer Dragon Ball games. Sway, Vanishing, Counter and Throw (normally Guard + a button) get their own buttons, and so do the Ultimate, ki charge, ascend and descend.\n\nTenkaichi 3: the buttons sit where Budokai Tenkaichi 3 had them (melee on the left, ki on top, guard on the right, dash at the bottom, R1/R2 to fly) and send the matching Raging Blast 2 moves.\n\nEach scheme keeps its own layout in the editor. Menus always use the menu layout.</string>
+    <string name="ctl_scheme_long">Raging Blast 2: the game\'s own controls, button by button. The four Super Attacks are on one disc: drag towards a direction to pick one, or just tap it for the first.\n\nModern: one tap per action, like newer Dragon Ball games. Sway, Vanishing, Counter and Throw (normally Guard + a button) get their own buttons, and so do the Ultimate, ki charge, ascend and descend.\n\nTenkaichi 3: fights play like Budokai Tenkaichi 3, on the screen and on a physical controller: □ melee, △ ki blast, ○ guard, ✕ dash, R1 / R2 up / down, L2 held charges ki, L2+○ Blast 1, L2+△ Blast 2 (with ↑ → ← the other Super Attacks), L2+↓△ Ultimate, R3 transform. The game reads them as its own moves; menus and the pause menu keep the usual buttons.\n\nEach scheme keeps its own layout in the editor. Menus always use the menu layout.</string>
     <string name="ctl_scheme_original">original</string>
     <string name="ctl_scheme_modern">Modern</string>
     <string name="ctl_scheme_modern_note">one tap</string>
-    <string name="ctl_scheme_bt3_note">BT3 positions</string>
+    <string name="ctl_scheme_bt3_note">BT3 controls</string>
     <string name="ctl_edit">Edit layout</string>
     <string name="ctl_edit_menu">Menu layout</string>
     <string name="editor_hint">Drag the buttons · tap one to edit it</string>

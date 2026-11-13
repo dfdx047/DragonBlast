@@ -38,7 +38,7 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 - Só a launcher (sem o SDK ao lado do repositório o build entra sozinho nesse modo):
   `cd android && ./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - Jogo completo (tudo dentro de `build/`, com `TMPDIR=build/tmp`):
-  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0041).
+  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0042).
      Precisa do `spirv-cross`: sem pacote no sistema, ele foi compilado em `build/third_party/spirv-cross-build`
      (tag vulkan-sdk-1.4.304.0) e o script o encontra sozinho.
   2. `tools/android/build_host_cli.sh` (recompilador `rexglue` para o PC).

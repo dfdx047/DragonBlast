@@ -1,9 +1,8 @@
 package com.dfdx047.dragonblast.game
 
 /**
- * What the touch controls may ask the game about. Raging Blast 2 has no game-state bridge yet: every query answers
- * "unknown" and the overlay keeps the layout the player picked (fight / menus). When the fight flag is found in the
- * game's memory, [fightFlag] gets a native implementation and the layouts switch by themselves, as in Dragon Burst.
+ * What the touch controls may ask the game about (android/native/src/game_state_jni.cpp). The fight state comes from
+ * Raging Blast 2's memory: the scene word (menus / fight) and the fight's pause flag.
  */
 object NativeGameState {
     const val SIDE_UNKNOWN = 0
@@ -15,8 +14,26 @@ object NativeGameState {
 
     fun syncPause(overlayOpen: Boolean, pauseQuickMenu: Boolean): Boolean = false
 
-    /** 1 = in a fight, 0 = menus, -1 = unknown. */
-    fun fightFlag(): Int = -1
+    const val STATE_UNKNOWN = -1
+    const val STATE_MENUS = 0
+    const val STATE_FIGHT = 1
+    const val STATE_PAUSED = 2
+
+    /** -1 = no game yet, 0 = menus, 1 = fight, 2 = fight with the pause menu open. */
+    fun fightState(): Int = try {
+        nativeFightState()
+    } catch (e: UnsatisfiedLinkError) {
+        STATE_UNKNOWN
+    }
+
+    @JvmStatic private external fun nativeFightState(): Int
+
+    /** 1 = in a fight (not paused), 0 = menus or pause, -1 = unknown. */
+    fun fightFlag(): Int = when (fightState()) {
+        STATE_FIGHT -> 1
+        STATE_UNKNOWN -> -1
+        else -> 0
+    }
 
     fun mapFlag(): Int = -1
 

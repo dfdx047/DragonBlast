@@ -19,6 +19,8 @@
 #include <rex/cvar.h>
 #include <rex/system/kernel_state.h>
 
+long long rb2_dump_memory(const char* path, unsigned start, unsigned end);  // game_state_jni.cpp
+
 namespace thps::live {
 namespace {
 
@@ -56,6 +58,17 @@ void PollFile() {
     std::string s(line);
     while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
     if (s.rfind("--", 0) == 0) s = s.substr(2);
+    if (s.rfind("@dump ", 0) == 0) {
+      // "@dump <name> <start hex> <end hex>": guest memory to files/dumps/<name>.bin (game_state_jni.cpp).
+      char name[96] = {};
+      unsigned start = 0, end = 0;
+      if (std::sscanf(s.c_str() + 6, "%95s %x %x", name, &start, &end) == 3) {
+        const std::string out = std::string("/sdcard/Android/data/com.dfdx047.dragonblast/files/dumps/") + name + ".bin";
+        mkdir("/sdcard/Android/data/com.dfdx047.dragonblast/files/dumps", 0775);
+        rb2_dump_memory(out.c_str(), start, end);
+      }
+      continue;
+    }
     if (!s.empty() && s[0] == '!') {
       // "!command args": run a console command (tests: e.g. "!cheat_zone factory" with
       // --dev_console=true). The file is re-read only when it changes, so it runs once.

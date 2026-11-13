@@ -1,0 +1,66 @@
+diff --git a/include/rex/input/state_filter.h b/include/rex/input/state_filter.h
+new file mode 100644
+index 00000000..811795fb
+--- /dev/null
++++ b/include/rex/input/state_filter.h
+@@ -0,0 +1,17 @@
++/**
++ * Dragon Blast (0042): a function the input system calls with a player's merged controller state (every pad and the
++ * on-screen controls of that player) before the game sees it. Raging Blast 2's Tenkaichi 3 scheme rewrites the
++ * buttons there during fights (android/native/src/bt3_controls.cpp). None by default.
++ */
++#pragma once
++
++#include <cstdint>
++
++#include <rex/input/input.h>
++
++namespace rex::input {
++
++using StateFilter = void (*)(uint32_t user_index, X_INPUT_STATE* state);
++void SetStateFilter(StateFilter filter);
++
++}  // namespace rex::input
+diff --git a/src/input/input_system.cpp b/src/input/input_system.cpp
+index 813bb1c9..3d0cabc0 100644
+--- a/src/input/input_system.cpp
++++ b/src/input/input_system.cpp
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <algorithm>
++#include <atomic>
+ #include <cmath>
+ 
+ #include <rex/dbg.h>
+@@ -17,6 +18,7 @@
+ #include <rex/input/flags.h>
+ #include <rex/input/input_driver.h>
+ #include <rex/input/input_system.h>
++#include <rex/input/state_filter.h>
+ #include <rex/input/mnk/mnk_input_driver.h>
+ #include <rex/input/nop/nop_input_driver.h>
+ #include <rex/input/sdl/sdl_input_driver.h>
+@@ -212,6 +214,12 @@ X_RESULT InputSystem::GetCapabilities(uint32_t user_index, uint32_t flags,
+   return driver->GetDeviceCapabilities(chosen, flags, out_caps);
+ }
+ 
++// Dragon Blast (0042): a function that may rewrite a player's merged controller state (state_filter.h).
++namespace {
++std::atomic<StateFilter> g_state_filter{nullptr};
++}  // namespace
++void SetStateFilter(StateFilter filter) { g_state_filter.store(filter, std::memory_order_release); }
++
+ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+   SCOPE_profile_cpu_f("hid");
+   if (!assignment_) {
+@@ -245,6 +253,9 @@ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+   if (!any) {
+     return X_ERROR_DEVICE_NOT_CONNECTED;
+   }
++  if (const StateFilter filter = g_state_filter.load(std::memory_order_acquire)) {
++    filter(user_index, &merged);
++  }
+   if (out_state) {
+     *out_state = merged;
+   }

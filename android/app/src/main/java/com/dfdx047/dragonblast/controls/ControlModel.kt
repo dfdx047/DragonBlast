@@ -216,21 +216,27 @@ object GameActions {
      * descend on the right shoulder, L2 ki charge on the left; Blast 1 = signature skill, Blast 2 = the Super Attack
      * disc, Ultimate, R3 transform.
      */
+    /**
+     * Budokai Tenkaichi 3: a PS2 pad in BT3's places (□ melee, △ ki, ○ guard, ✕ dash, L1 lock-on, L2 charge and
+     * Blasts, R1 / R2 up / down, R3 transform). It sends the plain buttons; the game side
+     * (android/native/src/bt3_controls.cpp) turns them into Raging Blast 2 moves during fights, the same way it does
+     * for a physical controller. Blast 1 / Blast 2 / Ultimate are L2 combinations, here also as one-tap buttons.
+     */
     fun tenkaichiLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
-            btn("melee", MELEE, ControlIcon.PUNCH, "□", CX - 0.075f, CY, 62f),
-            btn("ki", KI_BLAST, ControlIcon.KI, "△", CX, CY - 0.18f, 62f),
-            btn("guard", GUARD, ControlIcon.GUARD, "○", CX + 0.075f, CY, 62f),
-            btn("dash", DASH, ControlIcon.DASH, "✕", CX, CY + 0.18f, 62f),
-            btn("ascend", ASCEND, ControlIcon.ASCEND, "R1", 0.955f, 0.30f, 48f),
-            btn("descend", DESCEND, ControlIcon.DESCEND, "R2", 0.955f, 0.13f, 44f),
-            btn("blast1", SIGNATURE, ControlIcon.HYPER, "B1", 0.705f, 0.50f, 50f),
-            supers(0.745f, 0.25f, 56f),
-            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "UB", 0.845f, 0.17f, 48f),
-            btn("transform", DIAMOND, ControlIcon.TRANSFORM, "R3", 0.705f, 0.76f, 48f),
-            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "L2", 0.07f, 0.28f, 50f),
-            btn("vanishing", VANISHING, ControlIcon.VANISH, "○+✕", 0.615f, 0.90f, 42f),
+            btn("bt3_square", press(PadInput.X), ControlIcon.PUNCH, "□", CX - 0.075f, CY, 62f),
+            btn("bt3_triangle", press(PadInput.Y), ControlIcon.KI, "△", CX, CY - 0.18f, 62f),
+            btn("bt3_circle", press(PadInput.B), ControlIcon.GUARD, "○", CX + 0.075f, CY, 62f),
+            btn("bt3_cross", press(PadInput.A), ControlIcon.DASH, "✕", CX, CY + 0.18f, 62f),
+            btn("bt3_r1", press(PadInput.RB), ControlIcon.ASCEND, "R1", 0.955f, 0.30f, 48f),
+            btn("bt3_r2", press(PadInput.RT), ControlIcon.DESCEND, "R2", 0.955f, 0.13f, 44f),
+            btn("bt3_l1", press(PadInput.LB), ControlIcon.LOCKON, "L1", 0.705f, 0.30f, 46f),
+            btn("bt3_l2", press(PadInput.LT), ControlIcon.CHARGE, "L2", 0.705f, 0.13f, 46f),
+            btn("bt3_r3", press(PadInput.R3), ControlIcon.TRANSFORM, "R3", 0.705f, 0.76f, 46f),
+            btn("bt3_blast1", press(PadInput.LT, PadInput.B), ControlIcon.HYPER, "L2+○", 0.80f, 0.13f, 44f),
+            btn("bt3_blast2", press(PadInput.LT, PadInput.Y), ControlIcon.SUPER, "L2+△", 0.835f, 0.30f, 48f),
+            btn("bt3_ultimate", press(PadInput.LT, PadInput.BACKWARD, PadInput.Y), ControlIcon.ULTIMATE, "L2+↓△", 0.615f, 0.90f, 44f),
         ) + system(),
     )
 
@@ -316,7 +322,7 @@ object ControlLayoutStore {
 
     private fun file(kind: LayoutKind, scheme: ControlScheme) = java.io.File(
         AppPaths.controls,
-        if (kind == LayoutKind.GAMEPLAY) "fight_${scheme.key}.json" else "menu.json",
+        if (kind == LayoutKind.GAMEPLAY) "fight_${if (scheme == ControlScheme.TENKAICHI) "bt3pad" else scheme.key}.json" else "menu.json",
     )
 
     fun load(kind: LayoutKind, scheme: ControlScheme): ControlLayout {

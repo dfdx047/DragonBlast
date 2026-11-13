@@ -139,11 +139,11 @@
     <string name="ctl_scheme_sub">Los menús siempre usan los controles del juego</string>
     <string name="ctl_scheme">Esquema</string>
     <string name="ctl_scheme_short">Cómo quedan los botones de combate en la pantalla.</string>
-    <string name="ctl_scheme_long">Raging Blast 2: los controles del propio juego, botón por botón. Los cuatro Super Attacks están en un solo disco: arrastra hacia una dirección para elegir, o solo tócalo para el primero.\n\nModerno: un toque por acción, como en los Dragon Ball más nuevos. Sway, Vanishing, Counter y Agarre (en el mando, Guardia + un botón) tienen botones propios, igual que el Ultimate, la carga de ki, subir y bajar.\n\nTenkaichi 3: los botones están donde los tenía Budokai Tenkaichi 3 (golpe a la izquierda, ki arriba, guardia a la derecha, dash abajo, R1/R2 para volar) y envían los movimientos equivalentes de Raging Blast 2.\n\nCada esquema guarda su propio diseño en el editor. Los menús siempre usan el diseño de menú.</string>
+    <string name="ctl_scheme_long">Raging Blast 2: los controles del propio juego, botón por botón. Los cuatro Super Attacks están en un solo disco: arrastra hacia una dirección para elegir, o solo tócalo para el primero.\n\nModerno: un toque por acción, como en los Dragon Ball más nuevos. Sway, Vanishing, Counter y Agarre (en el mando, Guardia + un botón) tienen botones propios, igual que el Ultimate, la carga de ki, subir y bajar.\n\nTenkaichi 3: el combate se juega como en Budokai Tenkaichi 3, en la pantalla y en un mando físico: □ golpe, △ ráfaga de ki, ○ guardia, ✕ dash, R1 / R2 sube / baja, mantener L2 carga el ki, L2+○ Blast 1, L2+△ Blast 2 (con ↑ → ← los otros Super Attacks), L2+↓△ Ultimate, R3 transforma. El juego lo entiende como sus propios movimientos; los menús y la pausa mantienen los botones normales.\n\nCada esquema guarda su propio diseño en el editor. Los menús siempre usan el diseño de menú.</string>
     <string name="ctl_scheme_original">original</string>
     <string name="ctl_scheme_modern">Moderno</string>
     <string name="ctl_scheme_modern_note">un toque</string>
-    <string name="ctl_scheme_bt3_note">posiciones de BT3</string>
+    <string name="ctl_scheme_bt3_note">controles de BT3</string>
     <string name="ctl_edit">Editar diseño</string>
     <string name="ctl_edit_menu">Diseño de menú</string>
     <string name="editor_hint">Arrastra los botones · toca uno para editarlo</string>

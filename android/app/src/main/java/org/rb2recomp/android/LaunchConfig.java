@@ -332,6 +332,9 @@ final class LaunchConfig {
         // The guest 60 Hz vblank follows the display's own vsync (AChoreographer).
         defaults.add("--gpu_vblank_display_lock=true");
         defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
+        // Budokai Tenkaichi 3 controls in fights (android/native/src/bt3_controls.cpp), touch and physical pads.
+        defaults.add("--rb2_bt3_controls=" + "bt3".equals(
+                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2")));
         // 16:9 with side bars, or stretched over the whole (wider) screen; the game menu changes it live.
         defaults.add("--present_letterbox=" + !"stretch".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9")));

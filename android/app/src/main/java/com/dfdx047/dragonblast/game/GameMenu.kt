@@ -425,7 +425,11 @@ class MenuModel(
             MChoice(
                 s(R.string.ctl_scheme), s(R.string.ctl_scheme_short),
                 listOf("Raging Blast 2", s(R.string.ctl_scheme_modern), "Tenkaichi 3"), st.controlScheme.ordinal,
-            ) { i -> touchChanged { it.copy(controlScheme = ControlScheme.entries[i]) } },
+            ) { i ->
+                val scheme = ControlScheme.entries[i]
+                touchChanged { it.copy(controlScheme = scheme) }
+                host.setCvar("rb2_bt3_controls", (scheme == ControlScheme.TENKAICHI).toString())
+            },
             MChoice(
                 s(R.string.ctl_preset), s(R.string.ctl_preset_short),
                 listOf("Pro", "Normal", "Casual"), st.touchPreset.ordinal,

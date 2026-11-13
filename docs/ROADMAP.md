@@ -34,19 +34,27 @@ Feito:
   selos △○✕□). Testado no Poco: menus, seleção de personagens e luta só pelo toque.
 
 Falta:
-1. Troca automática menu/luta: achar no código/memória do jogo o estado "em luta" (`NativeGameState.fightFlag`). Hoje
-   o botão ⇄ troca o layout à mão.
+1. ~~Troca automática menu/luta~~ feita: `game_state_jni.cpp` lê a cena (`0x8264C228`: 2 menus, 3 luta) e a pausa
+   da luta (`[0x8264C230] − 0x47C` = 1; o bloco é do heap e muda de endereço a cada boot, o ponteiro global não),
+   achadas comparando dumps de memória (`@dump` no `live_cvars.txt`, `tools/android/memdiff.py`). A `TouchOverlay`
+   troca o layout sozinha; o ⇄ continua valendo até a próxima mudança.
 2. Conferir no jogo a página que o RT abre (trocar / transformar / fusão) e, se fizer sentido, separar os botões.
 3. `--ez play true` vindo de fora é ignorado enquanto a launcher ainda verifica a instalação (esperar a verificação).
 4. Menu lateral in-game no visual do Dragon Blast (substituir o `InGameMenu.java`).
 5. Medições no Poco: driver do sistema vs PanVK / drivers Mali da lista; o aparelho esquenta.
 
-## Fase 3 — Tenkaichi 3 no controle físico
-- Na tela o esquema já existe (fase 2). Falta o controle físico: remapear os botões do controle para as posições do
-  BT3 só durante a luta.
-- Pesquisa: mapa completo dos comandos do RB2 e do BT3 (rush, ki, guarda, dash, carga, transformações, especiais,
-  combos de direção); onde o RB2 lê o controle (código gerado: leitura XInput → estado de botões por jogador) e como
-  saber que está numa luta (estado do jogo). Remapear só na luta; menus intactos.
+## Fase 3 — Tenkaichi 3 no controle físico (feito, 2026-11-13)
+- Patch 0042 do SDK: `rex::input::SetStateFilter`, chamado com o estado já juntado de cada jogador (controles físicos
+  + toque). `android/native/src/bt3_controls.cpp` (cvar `rb2_bt3_controls`, ligada pelo esquema "Tenkaichi 3" no
+  arranque e ao vivo pelo menu) reescreve o jogador 1 só com a luta rodando e sem pausa: □ X, △ Y, ○ RB (guarda),
+  ✕ A, R1 LB, R2 LT, L2 sozinho = d-pad ↓ (carga, após 180 ms), L2+○ B, L2+△ / ↑△ / →△ / ←△ = analógico direito
+  (Super 1–4), L2+↓△ R3 (Ultimate), R3/L3 = RT (losango). L1 não tem equivalente.
+- O layout de toque Tenkaichi 3 virou um pad do PS2 nas posições do BT3 (manda os botões crus; arquivo salvo novo
+  `fight_bt3pad.json`), com atalhos L2+○, L2+△ e L2+↓△.
+- Testado no Poco numa luta real: L2 segurado carrega o ki (aura), L2+△ solta o Super 1 (Kamehameha); ao sair da
+  luta para os menus o esquema desliga. Log de depuração: cvar `rb2_bt3_log`.
+- Falta conferir no aparelho: a pausa pelo ponteiro `[0x8264C230] − 0x47C` (confirmada em dumps de dois boots, ainda
+  não com o jogo rodando), Super 2–4 e Ultimate por direção, Super Rising (R1+R2), losango pelo R3.
 
 ## Fase 4 — Renut para o Raging Blast 2
 - Seguir `~/Optxbox/docs/pt-BR/RENDERIZADOR_D3D.md` e o Renut do Dragon Burst: mapear a biblioteca D3D do RB2

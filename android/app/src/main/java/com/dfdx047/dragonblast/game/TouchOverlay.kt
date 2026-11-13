@@ -44,6 +44,24 @@ class TouchOverlay(private val activity: Activity, private val parent: ViewGroup
 
     private val attachRunnable = Runnable { attachPad() }
 
+    // Fight / menus from the game's memory: the layout follows when the state changes (twice in a row, 250 ms
+    // apart). The ⇄ button still switches by hand until the next change.
+    private var lastState = NativeGameState.STATE_UNKNOWN
+    private var pendingState = NativeGameState.STATE_UNKNOWN
+    private val statePoll = object : Runnable {
+        override fun run() {
+            val st = NativeGameState.fightFlag()
+            if (st != -1) {
+                if (st == pendingState && st != lastState) {
+                    lastState = st
+                    switchLayout(st == 1)
+                }
+                pendingState = st
+            }
+            main.postDelayed(this, 250)
+        }
+    }
+
     fun onCreate() {
         AppPaths.init(activity)
         settings = SettingsStore(activity).load()
@@ -86,6 +104,7 @@ class TouchOverlay(private val activity: Activity, private val parent: ViewGroup
         (activity.getSystemService(Activity.INPUT_SERVICE) as InputManager).registerInputDeviceListener(this, main)
         // The virtual pad is attached once SDL is up (its JNI needs the native side).
         main.postDelayed(attachRunnable, 2500)
+        main.postDelayed(statePoll, 3000)
         updateVisibility()
     }
 
@@ -164,6 +183,7 @@ class TouchOverlay(private val activity: Activity, private val parent: ViewGroup
 
     fun onDestroy() {
         main.removeCallbacks(attachRunnable)
+        main.removeCallbacks(statePoll)
         (activity.getSystemService(Activity.INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(this)
         engine.release()
         DragonBlastPad.detach()
