@@ -10,6 +10,11 @@
     <string name="tab_drivers">Drivers</string>
     <string name="tab_debug">Debug</string>
     <string name="tab_about">About</string>
+    <string name="tab_more">More</string>
+    <string name="more_drivers_sub">GPU drivers: download, import and choose</string>
+    <string name="more_debug_sub">Logs, test options and maintenance</string>
+    <string name="more_about_sub">Version, credits and links</string>
+    <string name="back">Back</string>
     <string name="play">PLAY</string>
     <string name="import_iso">IMPORT ISO</string>
     <string name="got_it">Got it</string>

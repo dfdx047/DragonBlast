@@ -42,6 +42,7 @@ import com.dfdx047.dragonblast.DragonBlastApp
 import com.dfdx047.dragonblast.R
 import com.dfdx047.dragonblast.data.AppLanguage
 import com.dfdx047.dragonblast.ui.LauncherViewModel
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Choice
 import com.dfdx047.dragonblast.ui.components.ChoiceRow
 import com.dfdx047.dragonblast.ui.components.Divider
@@ -59,10 +60,7 @@ fun AboutScreen(vm: LauncherViewModel) {
     fun open(url: String) = runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     var notices by remember { mutableStateOf<String?>(null) }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    CardsPage {
         SectionCard(stringResource(R.string.about_title), Icons.Outlined.Info) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(R.drawable.app_logo), null, Modifier.size(64.dp).clip(RoundedCornerShape(16.dp)))

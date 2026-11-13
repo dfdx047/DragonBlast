@@ -70,6 +70,7 @@ import com.dfdx047.dragonblast.R
 import com.dfdx047.dragonblast.data.Orientation
 import com.dfdx047.dragonblast.ui.LauncherTab
 import com.dfdx047.dragonblast.ui.LauncherViewModel
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Choice
 import com.dfdx047.dragonblast.ui.components.ChoiceRow
 import com.dfdx047.dragonblast.ui.components.ClashStage
@@ -96,13 +97,7 @@ fun HomeScreen(vm: LauncherViewModel, goTo: (LauncherTab) -> Unit) {
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth > maxHeight
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        CardsPage(fullWidthFirst = true) {
             val (status, level) = when {
                 install == null -> stringResource(R.string.status_checking) to Level.INFO
                 vm.busy?.label == R.string.busy_import -> stringResource(R.string.status_importing) to Level.INFO

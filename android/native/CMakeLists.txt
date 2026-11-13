@@ -15,7 +15,7 @@ cmake_minimum_required(VERSION 3.25)
 project(rb2_android LANGUAGES C CXX ASM)
 
 get_filename_component(THPS_REPO "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
-set(THPS_SDK "${THPS_REPO}/../rexglue-sdk-android" CACHE PATH "Android-prepared ReXGlue SDK tree")
+set(THPS_SDK "${THPS_REPO}/build/rexglue-sdk-android" CACHE PATH "Android-prepared ReXGlue SDK tree")
 set(THPS_GEN_DIR "${THPS_REPO}/android/codegen/generated-android/default" CACHE PATH
     "Output of tools/android/codegen.sh")
 # Each generated file is a huge translation unit; compiling too many at once exhausts RAM.
@@ -104,8 +104,8 @@ target_link_libraries(main PRIVATE rex::runtime thps_headers android log)
 target_compile_definitions(main PRIVATE REXGLUE_BUILD_CONFIG="$<CONFIG>")
 target_compile_options(main PRIVATE -march=${THPS_MARCH})
 # Optional custom Vulkan driver loader (libadrenotools, BSD-2-Clause; fetched by
-# tools/android/fetch_adrenotools.sh into ../third_party next to the repo, never committed).
-set(THPS_ADRENOTOOLS "${THPS_REPO}/../third_party/libadrenotools" CACHE PATH "libadrenotools checkout")
+# tools/android/fetch_adrenotools.sh into build/third_party, never committed).
+set(THPS_ADRENOTOOLS "${THPS_REPO}/build/third_party/libadrenotools" CACHE PATH "libadrenotools checkout")
 if(EXISTS "${THPS_ADRENOTOOLS}/CMakeLists.txt")
     add_subdirectory("${THPS_ADRENOTOOLS}" adrenotools)
     target_link_libraries(main PRIVATE adrenotools)

@@ -11,7 +11,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
+ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 NDK_VERSION=28.2.13676358
 CMAKE_VERSION=3.31.6
 NDK="$ANDROID_HOME/ndk/$NDK_VERSION"
@@ -20,6 +20,11 @@ NINJA="$ANDROID_HOME/cmake/$CMAKE_VERSION/bin/ninja"
 BUILD_TYPE="${BUILD_TYPE:-RelWithDebInfo}"
 JOBS="${JOBS:-$(nproc)}"
 [ -d "$NDK" ] || { echo "NDK $NDK_VERSION not found in $ANDROID_HOME"; exit 1; }
+# No SDK-managed CMake 3.31.6: use the system one (CMake 4 needs the policy floor for old third-party lists).
+if [ ! -x "$CMAKE" ]; then
+  CMAKE="$(command -v cmake)"; NINJA="$(command -v ninja)"
+  export CMAKE_POLICY_VERSION_MINIMUM=3.5
+fi
 
 EXTRA=()
 if [ "${PROBE_ONLY:-0}" = 1 ]; then
@@ -41,7 +46,7 @@ rm -rf "$LIBS"; mkdir -p "$LIBS"
 # The SDK suffixes its libraries with the build config (RelWithDebInfo -> "rd", Release -> none), and
 # both the runtime and the GPU plugin look each other up with that suffix, so keep the names as built.
 # The SDK also writes its libraries into its own tree (out/android-arm64), not into $OUT.
-SDK_OUT="${THPS_SDK:-$(dirname "$REPO")/rexglue-sdk-android}/out/android-arm64"
+SDK_OUT="${THPS_SDK:-$REPO/build/rexglue-sdk-android}/out/android-arm64"
 stage() { # glob
   local f; f="$(find "$OUT" "$SDK_OUT" -name "$1" -type f -newer "$OUT/CMakeCache.txt" 2>/dev/null | head -1)"
   [ -n "$f" ] || f="$(find "$OUT" "$SDK_OUT" -name "$1" -type f 2>/dev/null | head -1)"

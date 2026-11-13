@@ -67,6 +67,7 @@ import com.dfdx047.dragonblast.drivers.InstalledDriver
 import com.dfdx047.dragonblast.drivers.isPackage
 import com.dfdx047.dragonblast.ui.LauncherViewModel
 import com.dfdx047.dragonblast.ui.SourceState
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Choice
 import com.dfdx047.dragonblast.ui.components.ChoiceRow
 import com.dfdx047.dragonblast.ui.components.InfoButton
@@ -88,10 +89,7 @@ fun DriversScreen(vm: LauncherViewModel) {
     var listVendor by rememberSaveable { mutableStateOf(if (deviceVendor == GpuVendor.MALI) GpuVendor.MALI else GpuVendor.ADRENO) }
     LaunchedEffect(deviceVendor) { if (deviceVendor == GpuVendor.MALI || deviceVendor == GpuVendor.ADRENO) listVendor = deviceVendor }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    CardsPage {
         SectionCard(stringResource(R.string.drv_gpu), Icons.Outlined.DeveloperBoard) {
             if (gpu == null) {
                 CircularProgressIndicator(Modifier.size(20.dp), color = DbColors.Ember, strokeWidth = 2.dp)

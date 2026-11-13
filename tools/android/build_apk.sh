@@ -9,8 +9,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
-SDK_TREE="${THPS_SDK:-$(dirname "$REPO")/rexglue-sdk-android}"
+ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+SDK_TREE="${THPS_SDK:-$REPO/build/rexglue-sdk-android}"
 cd "$REPO/android"
 
 # The Gradle wrapper is not committed (it is a binary); take SDL3's, which pins the Gradle version
@@ -24,6 +24,6 @@ fi
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
 ls app/src/main/jniLibs/arm64-v8a/*.so >/dev/null 2>&1 || { echo "no native libraries staged: run build_native.sh first"; exit 1; }
-JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}" ./gradlew --no-daemon -Prb2.sdk="$SDK_TREE" assembleRelease "$@"
+JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}" ./gradlew --no-daemon -Prb2.sdk="$SDK_TREE" assembleRelease "$@"
 APK=app/build/outputs/apk/release/app-release.apk
 ls -la "$APK"

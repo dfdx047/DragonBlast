@@ -52,6 +52,7 @@ import com.dfdx047.dragonblast.R
 import com.dfdx047.dragonblast.data.AppPaths
 import com.dfdx047.dragonblast.data.Diagnostics
 import com.dfdx047.dragonblast.ui.LauncherViewModel
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Divider
 import com.dfdx047.dragonblast.ui.components.InfoButton
 import com.dfdx047.dragonblast.ui.components.SectionCard
@@ -77,10 +78,7 @@ fun DebugScreen(vm: LauncherViewModel) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    CardsPage {
         SectionCard(stringResource(R.string.dbg_logs), Icons.Outlined.Description, subtitle = stringResource(R.string.dbg_logs_sub)) {
             ActionButton(Icons.Outlined.IosShare, stringResource(R.string.dbg_export), enabled = vm.busy == null) { vm.exportLogs(context) }
             SettingSwitch(stringResource(R.string.dbg_verbose), help(R.string.dbg_verbose_short, R.string.dbg_verbose_long), s.verboseLog) { v ->

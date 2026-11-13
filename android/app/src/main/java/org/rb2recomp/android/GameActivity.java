@@ -32,6 +32,35 @@ public class GameActivity extends SDLActivity {
      */
     @Override
     protected void onCreate(android.os.Bundle savedInstanceState) {
+        android.content.SharedPreferences opts = getSharedPreferences("options", MODE_PRIVATE);
+        // SDL reads its hints from the environment too: keep running in the background when the
+        // player turned "pause in background" off (set before SDL loads).
+        if (!opts.getBoolean("pause_background", true)) {
+            try {
+                android.system.Os.setenv("SDL_ANDROID_BLOCK_ON_PAUSE", "0", true);
+            } catch (Exception ignored) {
+            }
+        }
+        // Screen orientation chosen in the launcher (Home tab). SDL sets the orientation again when it
+        // creates its window, from the SDL_ORIENTATIONS hint, so give it the same choice.
+        String orientation = opts.getString("orientation", "landscape");
+        try {
+            android.system.Os.setenv("SDL_ORIENTATIONS",
+                    "portrait".equals(orientation) ? "Portrait PortraitUpsideDown"
+                            : "sensor".equals(orientation) ? "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown"
+                            : "LandscapeLeft LandscapeRight", true);
+        } catch (Exception ignored) {
+        }
+        switch (orientation) {
+            case "portrait":
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+                break;
+            case "sensor":
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+                break;
+            default:
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
         try {
             // Drivers bundled in the APK (assets/drivers/<name>/<file>).
             android.content.res.AssetManager assets = getAssets();

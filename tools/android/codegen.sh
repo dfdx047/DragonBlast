@@ -12,7 +12,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 GAME_ROOT="$(cd "${1:?usage: codegen.sh <dir containing default.xex> [SDK_DIR]}" && pwd)"
-SDK="${2:-$(dirname "$REPO")/rexglue-sdk-android}"
+SDK="${2:-$REPO/build/rexglue-sdk-android}"
 CLI="$SDK/out/linux-amd64/Release/rexglue"
 OUT="$REPO/android/codegen"
 

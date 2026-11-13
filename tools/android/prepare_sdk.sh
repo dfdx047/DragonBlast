@@ -13,12 +13,12 @@
 # Idempotent: .android-patches/.applied lists what is in the tree; re-running applies only the
 # patches that are not in it yet, so a new patch can be added to an existing tree.
 #
-#   tools/android/prepare_sdk.sh [SDK_DIR]        default: ../rexglue-sdk-android
+#   tools/android/prepare_sdk.sh [SDK_DIR]        default: build/rexglue-sdk-android
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-SDK="${1:-$(dirname "$REPO")/rexglue-sdk-android}"
+SDK="${1:-$REPO/build/rexglue-sdk-android}"
 SDK_URL=https://github.com/rexglue/rexglue-sdk.git
 SDK_TAG=v0.10.0
 
@@ -52,13 +52,13 @@ if ! applied base; then
     local f=".android-patches/$1"
     [ -f "$f" ] || curl -fsSL -o "$f" "$BASE_URL/$1"
     echo "$2  $f" | sha256sum -c - >/dev/null || { echo "SHA-256 mismatch for $1 - refusing to apply"; exit 1; }
-    tr -d '\r' < "$f" > "/tmp/$1"
+    tr -d "\r" < "$f" > ".android-patches/$1.lf"
   }
   fetch "$ANDROID_PATCH" "$ANDROID_SHA"
   fetch "$PERF_PATCH" "$PERF_SHA"
   echo "== applying the third-party Android base"
-  git apply --whitespace=nowarn --index "/tmp/$ANDROID_PATCH"
-  git apply --whitespace=nowarn --index --exclude=src/system/mmio_handler.cpp "/tmp/$PERF_PATCH"
+  git apply --whitespace=nowarn --index ".android-patches/$ANDROID_PATCH.lf"
+  git apply --whitespace=nowarn --index --exclude=src/system/mmio_handler.cpp ".android-patches/$PERF_PATCH.lf"
   git commit -qm "base: $SDK_TAG + third-party Android patches ($REF)"
   echo base >> "$MARK"
 fi
@@ -71,6 +71,10 @@ for patch in "$OURS_DIR"/*.patch; do
   git commit -qm "$name"
   echo "$name" >> "$MARK"
 done
+# spirv-cross (used below): the system one, or a local build in build/third_party (see CLAUDE.md).
+if ! command -v spirv-cross >/dev/null && [ -x "$REPO/build/third_party/spirv-cross-build/spirv-cross" ]; then
+  export PATH="$REPO/build/third_party/spirv-cross-build:$PATH"
+fi
 # Generated, not stored in a patch: the fused resolve shaders (patch 0021) as a C header, built from
 # tools/android/resolve_shaders (one of them is derived from the SDK's own resolve copy shader).
 if [ ! -f "$SDK/src/graphics/vulkan/direct_resolve_shaders.h" ] ||

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -434,4 +435,51 @@ fun formatBytes(b: Long): String = when {
     b >= 1L shl 20 -> String.format(java.util.Locale.ROOT, "%.1f MB", b / (1024.0 * 1024))
     b >= 1L shl 10 -> String.format(java.util.Locale.ROOT, "%.0f KB", b / 1024.0)
     else -> "$b B"
+}
+
+/**
+ * A scrolling page of cards. On a narrow screen one column; on a wide one (landscape phones, handhelds, tablets) two
+ * columns packed like masonry: each card goes under the shorter column, so cards keep their natural height.
+ * [fullWidthFirst]: the first child spans every column (the Home stage).
+ */
+@Composable
+fun CardsPage(fullWidthFirst: Boolean = false, content: @Composable () -> Unit) {
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val columns = if (maxWidth >= 720.dp && maxWidth > maxHeight) 2 else 1
+        Box(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(16.dp),
+        ) {
+            MasonryLayout(columns, 14.dp, fullWidthFirst, content)
+        }
+    }
+}
+
+@Composable
+private fun MasonryLayout(columns: Int, gap: androidx.compose.ui.unit.Dp, fullWidthFirst: Boolean, content: @Composable () -> Unit) {
+    androidx.compose.ui.layout.Layout(content, Modifier.fillMaxWidth()) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val width = constraints.maxWidth
+        val colWidth = (width - gapPx * (columns - 1)) / columns
+        val heights = IntArray(columns)
+        data class Cell(val p: androidx.compose.ui.layout.Placeable, val x: Int, val y: Int)
+        val cells = ArrayList<Cell>(measurables.size)
+        measurables.forEachIndexed { i, m ->
+            if (i == 0 && fullWidthFirst && columns > 1) {
+                val p = m.measure(androidx.compose.ui.unit.Constraints(minWidth = width, maxWidth = width))
+                cells += Cell(p, 0, 0)
+                val top = if (p.height > 0) p.height + gapPx else 0
+                for (c in 0 until columns) heights[c] = top
+            } else {
+                val c = heights.indices.minBy { heights[it] }
+                val p = m.measure(androidx.compose.ui.unit.Constraints(minWidth = colWidth, maxWidth = colWidth))
+                cells += Cell(p, c * (colWidth + gapPx), heights[c])
+                if (p.height > 0) heights[c] += p.height + gapPx
+            }
+        }
+        val total = (heights.maxOrNull() ?: 0) - gapPx
+        layout(width, total.coerceAtLeast(0)) { cells.forEach { it.p.placeRelative(it.x, it.y) } }
+    }
 }

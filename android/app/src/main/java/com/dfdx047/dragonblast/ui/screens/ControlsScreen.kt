@@ -26,6 +26,7 @@ import com.dfdx047.dragonblast.data.TouchMode
 import com.dfdx047.dragonblast.data.TouchPreset
 import com.dfdx047.dragonblast.data.tuning
 import com.dfdx047.dragonblast.ui.LauncherViewModel
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Choice
 import com.dfdx047.dragonblast.ui.components.ChoiceRow
 import com.dfdx047.dragonblast.ui.components.Divider
@@ -39,10 +40,7 @@ import com.dfdx047.dragonblast.ui.theme.DbColors
 @Composable
 fun ControlsScreen(vm: LauncherViewModel) {
     val s = vm.settings
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    CardsPage {
         SectionCard(stringResource(R.string.ctl_touch), Icons.Outlined.TouchApp) {
             ChoiceRow(
                 title = stringResource(R.string.ctl_touch_mode),

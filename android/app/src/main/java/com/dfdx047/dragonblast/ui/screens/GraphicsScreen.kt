@@ -21,6 +21,7 @@ import com.dfdx047.dragonblast.data.Renderer
 import com.dfdx047.dragonblast.data.SettingsStore
 import com.dfdx047.dragonblast.data.Upscaler
 import com.dfdx047.dragonblast.ui.LauncherViewModel
+import com.dfdx047.dragonblast.ui.components.CardsPage
 import com.dfdx047.dragonblast.ui.components.Choice
 import com.dfdx047.dragonblast.ui.components.ChoiceRow
 import com.dfdx047.dragonblast.ui.components.Divider
@@ -38,10 +39,7 @@ private enum class GfxPreset(val scale: Int, val upscaler: Upscaler) {
 fun GraphicsScreen(vm: LauncherViewModel) {
     val s = vm.settings
     val scales = SettingsStore.RENDER_SCALES
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    CardsPage {
         SectionCard(stringResource(R.string.gfx_presets), Icons.Outlined.AutoAwesome, subtitle = stringResource(R.string.gfx_presets_sub)) {
             val current = GfxPreset.entries.firstOrNull { it.scale == s.renderScale && it.upscaler == s.upscaler }
             ChoiceRow(

@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // The native libraries are built separately by tools/android/build_native.sh and staged into
 // app/src/main/jniLibs (clearer logs and incremental builds than CMake through Gradle).
 //
-// Launcher-only builds: when the SDK tree (rexglue-sdk-android, next to the repository) is not there,
+// Launcher-only builds: when the SDK tree (build/rexglue-sdk-android inside the repository) is not there,
 // the SDL Java classes are missing, so the game shell (org.rb2recomp.android) is left out. The APK opens
 // the launcher; Play says the game engine is not in this build. "-Pdb.uiOnly=true" forces that mode.
 
@@ -17,7 +17,7 @@ plugins {
 }
 
 val sdkTree: File = (findProperty("rb2.sdk") as String?)?.let { file(it) }
-    ?: rootProject.projectDir.parentFile.parentFile.resolve("rexglue-sdk-android")
+    ?: rootProject.projectDir.parentFile.resolve("build/rexglue-sdk-android")
 val sdlJava = sdkTree.resolve("thirdparty/sdl3/android-project/app/src/main/java")
 val uiOnly = (findProperty("db.uiOnly") as String?) == "true" || !sdlJava.isDirectory
 

@@ -70,7 +70,6 @@ final class LaunchConfig {
         "--gpu_fused_resolve=true",
         // The game puts its music and voices on the 5.1 center channel; a 6-channel stream
         // handed to Android lost them on the Thor's speakers. Fold to stereo ourselves.
-        "--audio_force_stereo=true",
         "--kernel_wait_poll_backoff_us=100",
         "--android_thread_affinity=true",
         "--android_affinity_mode=5",
@@ -335,7 +334,14 @@ final class LaunchConfig {
         defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
         // Internal resolution (src/rb2_resolution.h); the presenter scales it to the screen.
         defaults.add("--rb2_render_scale=" + renderScale(context));
-        if (showFps(context)) {
+        android.content.SharedPreferences opts = context.getSharedPreferences("options", Context.MODE_PRIVATE);
+        // Dragon Blast launcher options. The game puts its music and voices on the 5.1 center
+        // channel; folding to stereo ourselves keeps them on phone speakers.
+        defaults.add("--audio_force_stereo=" + opts.getBoolean("audio_stereo", true));
+        if (opts.getBoolean("verbose_log", false)) {
+            defaults.add("--log_level=debug");
+        }
+        if (showFps(context) || opts.getBoolean("gpu_stats", false)) {
             defaults.add("--show_debug_overlay=true");
         }
         // The in-game menu switches frame generation and the frame rate while the game runs, so the
@@ -357,6 +363,13 @@ final class LaunchConfig {
         }
         for (String arg : defaults) {
             args.put(optionName(arg), arg);
+        }
+        // Launcher "extra launch options" (Debug tab), one per line; args.txt still wins.
+        for (String line : opts.getString("extra_args", "").split("\n")) {
+            line = line.trim();
+            if (line.startsWith("--")) {
+                args.put(optionName(line), line);
+            }
         }
 
         File override = new File(root, "args.txt");

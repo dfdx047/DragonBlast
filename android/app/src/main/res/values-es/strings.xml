@@ -9,6 +9,11 @@
     <string name="tab_drivers">Drivers</string>
     <string name="tab_debug">Depuración</string>
     <string name="tab_about">Acerca de</string>
+    <string name="tab_more">Más</string>
+    <string name="more_drivers_sub">Drivers de la GPU: descargar, importar y elegir</string>
+    <string name="more_debug_sub">Registros, opciones de prueba y mantenimiento</string>
+    <string name="more_about_sub">Versión, créditos y enlaces</string>
+    <string name="back">Volver</string>
     <string name="play">JUGAR</string>
     <string name="import_iso">IMPORTAR ISO</string>
     <string name="got_it">Entendido</string>

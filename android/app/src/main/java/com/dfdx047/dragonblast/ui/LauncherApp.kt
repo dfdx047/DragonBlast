@@ -1,12 +1,19 @@
 package com.dfdx047.dragonblast.ui
 
 import androidx.annotation.StringRes
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +37,7 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
@@ -70,13 +78,22 @@ import com.dfdx047.dragonblast.ui.screens.GraphicsScreen
 import com.dfdx047.dragonblast.ui.screens.HomeScreen
 import com.dfdx047.dragonblast.ui.theme.DbColors
 
-enum class LauncherTab(@StringRes val title: Int, val icon: ImageVector) {
+/**
+ * Pages of the launcher. The bar shows only the [primary] ones (Home, Graphics, Controls, More); Drivers, Debug and
+ * About open from inside More and keep More highlighted.
+ */
+enum class LauncherTab(@StringRes val title: Int, val icon: ImageVector, val primary: Boolean = true, @StringRes val subtitle: Int = 0) {
     HOME(R.string.tab_home, Icons.Outlined.Home),
     GRAPHICS(R.string.tab_graphics, Icons.Outlined.Tune),
     CONTROLS(R.string.tab_controls, Icons.Outlined.SportsEsports),
-    DRIVERS(R.string.tab_drivers, Icons.Outlined.Memory),
-    DEBUG(R.string.tab_debug, Icons.Outlined.BugReport),
-    ABOUT(R.string.tab_about, Icons.Outlined.Info),
+    MORE(R.string.tab_more, Icons.Outlined.MoreHoriz),
+    DRIVERS(R.string.tab_drivers, Icons.Outlined.Memory, false, R.string.more_drivers_sub),
+    DEBUG(R.string.tab_debug, Icons.Outlined.BugReport, false, R.string.more_debug_sub),
+    ABOUT(R.string.tab_about, Icons.Outlined.Info, false, R.string.more_about_sub),
+    ;
+
+    /** The bar item that lights up for this page. */
+    val barTab: LauncherTab get() = if (primary) this else MORE
 }
 
 @Composable
@@ -84,6 +101,10 @@ fun LauncherApp(vm: LauncherViewModel) {
     var tab by rememberSaveable { mutableStateOf(LauncherTab.HOME) }
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    // System back: a page inside More goes back to More, any other page back to Home.
+    BackHandler(enabled = tab != LauncherTab.HOME) {
+        tab = if (tab.primary) LauncherTab.HOME else LauncherTab.MORE
+    }
 
     LaunchedEffect(vm.message) {
         val m = vm.message ?: return@LaunchedEffect
@@ -137,9 +158,10 @@ private fun Page(tab: LauncherTab, vm: LauncherViewModel, goTo: (LauncherTab) ->
                 LauncherTab.HOME -> HomeScreen(vm, goTo)
                 LauncherTab.GRAPHICS -> GraphicsScreen(vm)
                 LauncherTab.CONTROLS -> ControlsScreen(vm)
-                LauncherTab.DRIVERS -> DriversScreen(vm)
-                LauncherTab.DEBUG -> DebugScreen(vm)
-                LauncherTab.ABOUT -> AboutScreen(vm)
+                LauncherTab.MORE -> MoreScreen(goTo)
+                LauncherTab.DRIVERS -> SubPage(LauncherTab.DRIVERS, goTo) { DriversScreen(vm) }
+                LauncherTab.DEBUG -> SubPage(LauncherTab.DEBUG, goTo) { DebugScreen(vm) }
+                LauncherTab.ABOUT -> SubPage(LauncherTab.ABOUT, goTo) { AboutScreen(vm) }
             }
         }
     }
@@ -168,16 +190,67 @@ private fun Header() {
     Box(Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, DbColors.Ember.copy(alpha = 0.35f), Color.Transparent))))
 }
 
-/** Bottom bar: six tabs share the width; the chosen one has an ember icon and a short line above it. */
+/** Bottom bar: the four primary tabs share the width; the chosen one has an ember icon and a short line above it. */
 @Composable
 private fun BottomTabs(selected: LauncherTab, onSelect: (LauncherTab) -> Unit) {
     Column(Modifier.fillMaxWidth().background(DbColors.Ink)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(DbColors.LineSoft))
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-            LauncherTab.entries.forEach { t ->
-                TabItem(t, t == selected, Modifier.weight(1f)) { onSelect(t) }
+            LauncherTab.entries.filter { it.primary }.forEach { t ->
+                TabItem(t, t == selected.barTab, Modifier.weight(1f)) { onSelect(t) }
             }
         }
+    }
+}
+
+/** "More": the secondary pages as three quiet rows. */
+@Composable
+private fun MoreScreen(goTo: (LauncherTab) -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        LauncherTab.entries.filter { !it.primary }.forEach { t ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(DbColors.Slate)
+                    .border(1.dp, DbColors.LineSoft, RoundedCornerShape(18.dp))
+                    .clickable { goTo(t) }
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(DbColors.SlateHigh),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(t.icon, null, tint = DbColors.Ember, modifier = Modifier.size(22.dp)) }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(t.title), style = MaterialTheme.typography.titleMedium, color = DbColors.Text)
+                    Text(stringResource(t.subtitle), style = MaterialTheme.typography.bodySmall, color = DbColors.TextFaint)
+                }
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = DbColors.TextFaint)
+            }
+        }
+    }
+}
+
+/** A page opened from More: a slim back row above it. */
+@Composable
+private fun SubPage(tab: LauncherTab, goTo: (LauncherTab) -> Unit, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { goTo(LauncherTab.MORE) }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back), tint = DbColors.TextDim, modifier = Modifier.padding(8.dp).size(20.dp))
+            Text(stringResource(tab.title), style = MaterialTheme.typography.titleMedium, color = DbColors.Text)
+        }
+        Box(Modifier.weight(1f).fillMaxWidth()) { content() }
     }
 }
 
@@ -219,8 +292,8 @@ private fun SideRail(selected: LauncherTab, onSelect: (LauncherTab) -> Unit) {
         ) {
             Image(painterResource(R.drawable.app_logo), null, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
             Spacer(Modifier.height(8.dp))
-            LauncherTab.entries.forEach { t ->
-                TabItem(t, t == selected, Modifier.fillMaxWidth().padding(horizontal = 6.dp)) { onSelect(t) }
+            LauncherTab.entries.filter { it.primary }.forEach { t ->
+                TabItem(t, t == selected.barTab, Modifier.fillMaxWidth().padding(horizontal = 6.dp)) { onSelect(t) }
             }
         }
         Box(Modifier.fillMaxHeight().width(1.dp).background(DbColors.LineSoft))
