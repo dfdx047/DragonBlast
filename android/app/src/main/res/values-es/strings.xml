@@ -108,13 +108,14 @@
     <string name="menu_info_render">Dibujado a %1$s, mostrado en %2$s</string>
     <string name="gfx_upscaler">Escalador</string>
     <string name="gfx_upscaler_short">Cómo se estira la imagen a la pantalla.</string>
-    <string name="gfx_upscaler_long">Bilineal: simple y suave, el más ligero. Recomendado de 720p para arriba.\n\nFSR 1 (AMD FidelityFX Super Resolution): bordes más nítidos cuando el juego dibuja muy por debajo de tu pantalla (540p o menos), con un coste pequeño de GPU.</string>
+    <string name="gfx_upscaler_long">Bilineal: simple y suave, el más ligero. Recomendado de 720p para arriba.\n\nFSR 1 (AMD FidelityFX Super Resolution): rehace bordes más nítidos cuando el juego dibuja muy por debajo de tu pantalla (540p o menos), con un coste pequeño de GPU.\n\nAMD CAS (Contrast Adaptive Sharpening): da nitidez a la imagen después de estirarla; bueno a 720p y 1080p, donde FSR tiene poco que rehacer. Los tres cambian al momento desde el menú del juego.</string>
     <string name="gfx_upscaler_bilinear">Bilineal</string>
     <string name="gfx_upscaler_fsr_note">más nítido en resolución baja</string>
+    <string name="gfx_upscaler_cas_note">nitidez, mismo tamaño</string>
     <string name="gfx_frames">Fotogramas</string>
     <string name="gfx_fps">Fotogramas por segundo</string>
     <string name="gfx_fps_short">60 es la velocidad del propio juego.</string>
-    <string name="gfx_fps_long">Raging Blast 2 ejecuta la lógica del juego una vez por fotograma, así que siempre va a 60: limitarlo a 30 haría que todo el juego fuera a media velocidad.\n\n120 FPS: la generación de fotogramas añade una imagen interpolada entre dos reales, para pantallas de 120 Hz. Movimiento más fluido, un fotograma más de retraso y más batería.</string>
+    <string name="gfx_fps_long">Raging Blast 2 ejecuta la lógica del juego una vez por fotograma, así que siempre va a 60: limitarlo a 30 haría que todo el juego fuera a media velocidad.\n\n120 FPS: la generación de fotogramas añade una imagen interpolada entre dos reales, para pantallas de 120 Hz. Movimiento más fluido, un fotograma más de retraso y más batería. Experimental: en GPU Mali (p. ej. Poco X6 Pro) el propio juego baja hoy a 35-40 FPS con ella.</string>
     <string name="gfx_fps_fg_note">generación de fotogramas</string>
     <string name="gfx_show_fps">Mostrar FPS</string>
     <string name="gfx_show_fps_short">Contador de fotogramas en la esquina.</string>

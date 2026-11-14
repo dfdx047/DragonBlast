@@ -164,6 +164,14 @@ public final class LaunchConfig {
     }
 
     // Upscaler from the internal resolution to the screen: bilinear, or AMD FSR 1 (EASU + RCAS).
+    /** Scan-out filter: "bilinear", "fsr" (FSR 1) or "cas" (AMD CAS); older saves kept only the FSR switch. */
+    static String upscaler(Context context) {
+        android.content.SharedPreferences p = context.getSharedPreferences("options", Context.MODE_PRIVATE);
+        String u = p.getString("upscaler", null);
+        if ("bilinear".equals(u) || "fsr".equals(u) || "cas".equals(u)) return u;
+        return p.getBoolean("fsr", false) ? "fsr" : "bilinear";
+    }
+
     static boolean fsr(Context context) {
         return context.getSharedPreferences("options", Context.MODE_PRIVATE).getBoolean("fsr", false);
     }
@@ -366,7 +374,7 @@ public final class LaunchConfig {
         defaults.add("--gpu_regmem_max_sleep_us=1000");
         // The guest 60 Hz vblank follows the display's own vsync (AChoreographer).
         defaults.add("--gpu_vblank_display_lock=true");
-        defaults.add("--present_effect=" + (fsr(context) ? "fsr" : "bilinear"));
+        defaults.add("--present_effect=" + upscaler(context));
         // Renderer (launcher Graphics): Xenia's emulated GPU, or the Renut (android/native/src/renut, cvar from its glue).
         final boolean renut = renut(context);
         defaults.add("--swordman_renderer=" + (renut ? "renut" : "xenos"));
@@ -384,6 +392,8 @@ public final class LaunchConfig {
             // times a frame to restore it, read at full size; making their levels cost 3.5 ms a frame at 1080p on a
             // Mali-G615, lazily 1 ms.
             defaults.add("--swordman_renut_resolve_mips_lazy=true");
+            // "120 FPS": the Renut's own frame generation (renut/0025, glue cvar), not the emulated GPU's.
+            defaults.add("--dbz3_frame_interpolation=" + frameGeneration(fpsMode(context)));
             android.content.SharedPreferences o = context.getSharedPreferences("options", Context.MODE_PRIVATE);
             String skip = renutSkipList(o.getBoolean("fx_bloom", true), o.getBoolean("fx_shadows", true));
             if (!skip.isEmpty()) defaults.add("--swordman_renut_skip_ps=" + skip);

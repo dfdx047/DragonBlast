@@ -365,11 +365,11 @@ class MenuModel(
             },
             MChoice(
                 s(R.string.gfx_upscaler), s(R.string.gfx_upscaler_short),
-                listOf(s(R.string.gfx_upscaler_bilinear), "FSR 1"), if (st.upscaler == Upscaler.FSR) 1 else 0,
+                listOf(s(R.string.gfx_upscaler_bilinear), "FSR 1", "AMD CAS"), st.upscaler.ordinal,
             ) { i ->
-                val fsr = i == 1
-                update { it.copy(upscaler = if (fsr) Upscaler.FSR else Upscaler.BILINEAR) }
-                host.setCvar("present_effect_live", if (fsr) "2" else "1")
+                val u = Upscaler.entries[i]
+                update { it.copy(upscaler = u) }
+                host.setCvar("present_effect_live", u.code.toString())
             },
             MChoice(
                 s(R.string.gfx_fps), s(R.string.gfx_fps_short),
@@ -420,6 +420,7 @@ class MenuModel(
         host.setCvar("android_affinity_mode", "2")
         host.setCvar("rb2_vsync_hz", "60")
         host.setCvar("gpu_frame_generation", fg.toString())
+        host.setCvar("dbz3_frame_interpolation", fg.toString())  // Renut (its own frame generation)
         host.setCvar("gpu_vblank_hold_us", if (fg) "0" else "15000")
         host.fpsModeChanged(m.code)
     }

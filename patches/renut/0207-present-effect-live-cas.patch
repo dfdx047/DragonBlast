@@ -1,0 +1,14 @@
+Dragon Blast (2026-11-14): present_effect_live 3 = AMD CAS (FidelityFX Contrast Adaptive Sharpening), the
+launcher's third upscaler, switched from the in-game menu like bilinear (1) and FSR 1 (2).
+
+diff --git a/app/src/renut_engine/gpu/backend/present.cpp b/app/src/renut_engine/gpu/backend/present.cpp
+--- a/app/src/renut_engine/gpu/backend/present.cpp
++++ b/app/src/renut_engine/gpu/backend/present.cpp
+@@ -448,6 +448,7 @@
+   const std::string &name = REXCVAR_GET(present_effect);
+   const uint32_t live = REXCVAR_GET(present_effect_live);
+   const Effect effect = live == 2   ? Effect::kFsr
++                        : live == 3 ? Effect::kCas  // Dragon Blast (renut/0207): AMD CAS from the menu too
+                         : live == 1 ? Effect::kBilinear
+                         : name == "fsr" ? Effect::kFsr
+                         : name == "cas" ? Effect::kCas

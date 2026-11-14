@@ -1,0 +1,30 @@
+Dragon Blast (2026-11-14): swordman_renut_swap_images, the Renut swap chain image count (read at start; 0 =
+frames in flight + 1). Frame generation presents twice a game frame at 120 Hz, which a 3-image chain only fits
+with no slack.
+
+diff --git a/app/src/renut_engine/gpu/backend/video.cpp b/app/src/renut_engine/gpu/backend/video.cpp
+--- a/app/src/renut_engine/gpu/backend/video.cpp
++++ b/app/src/renut_engine/gpu/backend/video.cpp
+@@ -95,6 +95,12 @@
+                       "where the device has BC formats, compute elsewhere")
+     .lifecycle(rex::cvar::Lifecycle::kInitOnly);
+ 
++// Dragon Blast (renut/0208): the swap chain's image count. The "120 FPS" frame generation presents twice a game
++// frame on a 120 Hz display: with 3 images the render thread waits two whole refreshes a frame and the game, which
++// hands it the next frame, misses its vblank on any jitter.
++REXCVAR_DEFINE_INT32(swordman_renut_swap_images, 0, "SA2/Renderer",
++                     "Renut swap chain images (0 = frames in flight + 1, i.e. 3; read at start)")
++    .range(0, 6);
+ REXCVAR_DEFINE_BOOL(sa2_renut_double_buffer, false, "SA2/Renderer",
+                     "Renut's renderer: a swapchain of 2 images instead of 3 (input latency: a finished frame is shown at "
+                     "the next refresh instead of queueing behind one already waiting). Off by default: a frame that "
+@@ -1069,7 +1075,8 @@
+   // sa2-nx (2026-10-20, sa2_renut_double_buffer): two images, so a finished frame is shown at the next refresh instead
+   // of queueing behind one already waiting for it; a frame that misses a refresh then waits a whole one.
+   static const bool double_buffer = REXCVAR_GET(sa2_renut_double_buffer);
+-  const uint32_t images = double_buffer ? 2u : kFramesInFlight + 1;
++  const int32_t swap_images = REXCVAR_GET(swordman_renut_swap_images);  // Dragon Blast (renut/0208)
++  const uint32_t images = double_buffer ? 2u : swap_images >= 2 ? uint32_t(swap_images) : kFramesInFlight + 1;
+   plume::RenderSwapChainDesc swap_desc(render_window, kSwapChainFormat, images, false, kFramesInFlight);
+   RGPU_INFO("Swapchain: {} images{}", images, double_buffer ? " (sa2_renut_double_buffer)" : "");
+   s.swap_chain = s.queue->createSwapChain(swap_desc);

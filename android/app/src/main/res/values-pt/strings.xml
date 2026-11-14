@@ -108,13 +108,14 @@
     <string name="menu_info_render">Desenhado em %1$s, mostrado em %2$s</string>
     <string name="gfx_upscaler">Escalonador</string>
     <string name="gfx_upscaler_short">Como a imagem é esticada até a tela.</string>
-    <string name="gfx_upscaler_long">Bilinear: simples e suave, o mais leve. Recomendado de 720p para cima.\n\nFSR 1 (AMD FidelityFX Super Resolution): bordas mais nítidas quando o jogo desenha bem abaixo da sua tela (540p ou menos), com um custo pequeno de GPU.</string>
+    <string name="gfx_upscaler_long">Bilinear: simples e suave, o mais leve. Recomendado de 720p para cima.\n\nFSR 1 (AMD FidelityFX Super Resolution): refaz bordas mais nítidas quando o jogo desenha bem abaixo da sua tela (540p ou menos), com um custo pequeno de GPU.\n\nAMD CAS (Contrast Adaptive Sharpening): deixa a imagem mais nítida depois de esticar; bom em 720p e 1080p, onde o FSR tem pouco a refazer. Os três mudam na hora pelo menu do jogo.</string>
     <string name="gfx_upscaler_bilinear">Bilinear</string>
     <string name="gfx_upscaler_fsr_note">mais nítido em resolução baixa</string>
+    <string name="gfx_upscaler_cas_note">nitidez, mesmo tamanho</string>
     <string name="gfx_frames">Taxa de quadros</string>
     <string name="gfx_fps">Quadros por segundo</string>
     <string name="gfx_fps_short">60 é a velocidade do próprio jogo.</string>
-    <string name="gfx_fps_long">O Raging Blast 2 roda a lógica do jogo uma vez por quadro, então ele sempre joga a 60: limitar em 30 deixaria o jogo inteiro em câmera lenta.\n\n120 FPS: a geração de quadros põe uma imagem interpolada entre duas reais, para telas de 120 Hz. Movimento mais fluido, cerca de um quadro a mais de atraso nos comandos e mais bateria.</string>
+    <string name="gfx_fps_long">O Raging Blast 2 roda a lógica do jogo uma vez por quadro, então ele sempre joga a 60: limitar em 30 deixaria o jogo inteiro em câmera lenta.\n\n120 FPS: a geração de quadros põe uma imagem interpolada entre duas reais, para telas de 120 Hz. Movimento mais fluido, cerca de um quadro a mais de atraso nos comandos e mais bateria. Experimental: em GPUs Mali (ex.: Poco X6 Pro) o próprio jogo cai hoje para 35-40 FPS com ela.</string>
     <string name="gfx_fps_fg_note">geração de quadros</string>
     <string name="gfx_show_fps">Mostrar FPS</string>
     <string name="gfx_show_fps_short">Contador de quadros no canto.</string>

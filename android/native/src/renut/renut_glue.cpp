@@ -52,10 +52,24 @@ REXCVAR_DEFINE_INT32(swordman_renut_vblank_hz, 60, "SwordMan", "Renut: VBlank ra
     .range(30, 240)
     .lifecycle(rex::cvar::Lifecycle::kHotReload);
 
+// The Renut's "120 FPS" (renut/0025, backend/present.cpp: a frame generated halfway between each two game frames,
+// shown on a display at 100 Hz or more). Its cvars came with Dragon Burst's SDK patch 0092, which this SDK lacks.
+REXCVAR_DEFINE_BOOL(dbz3_frame_interpolation, false, "SwordMan",
+                    "Renut: frame generation - a frame halfway between each two game frames (60 -> 120 FPS on a "
+                    "120 Hz display, one display frame of extra latency)")
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);
+REXCVAR_DEFINE_INT32(dbz3_frame_interpolation_quality, 1, "SwordMan",
+                     "Renut frame generation: 0 = blend only, 1 = motion (3 candidates per pixel), 2 = motion with "
+                     "the 4 neighbouring block vectors (better edges)")
+    .range(0, 2)
+    .lifecycle(rex::cvar::Lifecycle::kHotReload);
+
 // Frames presented by the game in Renut mode.
 std::atomic<uint64_t> g_sa2_game_frames{0};
 
 #include <rex/graphics/frame_pacing.h>  // compat/ (the Renut's frame pacing reads the guest VBlank rate there)
+#include <rex/perf/frame_rate.h>  // compat/: the display refresh rate the frame generation reads
+#include <rex/perf/counter.h>    // the SDK perf counters (FPS overlay)
 
 // plume (renut/0026): called around each submit; Zandatsu's GPU-loss gate. Nothing waits here.
 extern "C" void zandatsu_gpu_gate() {}
@@ -116,6 +130,30 @@ int VBlankThreadMain() {
     uint64_t args[] = {device};
     dispatcher->ExecuteInterrupt(thread->thread_state(), kRb2VBlankHandler, args, 1);
     const uint64_t n = g_vblanks.fetch_add(1, std::memory_order_relaxed) + 1;
+    // The display's refresh rate, which the frame generation needs (>= 100 Hz): GameActivity writes it to
+    // files/display_hz.txt on start and on every display mode change. Read once a second.
+    // The launcher's FPS counter (the SDK's compact debug overlay) reads the frame time from the perf counter
+    // snapshot, which only the emulated GPU's command processor fills: the game's frame rate every half second.
+    if (n % 30 == 0) {
+      static uint64_t last_frames = 0;
+      static auto last_time = std::chrono::steady_clock::now();
+      const uint64_t frames = g_sa2_game_frames.load(std::memory_order_relaxed);
+      const auto now = std::chrono::steady_clock::now();
+      const int64_t us = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time).count();
+      if (frames > last_frames && us > 0) {
+        rex::perf::SetCounter(rex::perf::CounterId::kFrameTimeUs, us / int64_t(frames - last_frames));
+        rex::perf::ResetFrameCounters();  // the snapshot the overlay reads
+      }
+      last_frames = frames;
+      last_time = now;
+    }
+    if (n % 60 == 1) {
+      if (FILE* f = std::fopen((dragonblast::AppDirectory() / "display_hz.txt").c_str(), "r")) {
+        int hz = 0;
+        if (std::fscanf(f, "%d", &hz) == 1 && hz > 0) rex::perf::SetDisplayRefreshRate(float(hz));
+        std::fclose(f);
+      }
+    }
     if (n == 1 || n == 600)
       REXLOG_INFO("Renut: D3D VBlank at {:.0f} Hz ({} vblanks, device {:08X})", 1e9 / double(interval.count()), n,
                   device);

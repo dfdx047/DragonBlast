@@ -9,7 +9,8 @@ enum class Orientation(val key: String) { LANDSCAPE("landscape"), PORTRAIT("port
 /** Frame rate modes, same numbers as LaunchConfig.fps_mode (only the 60 modes: RB2's logic runs per frame). */
 enum class FpsMode(val code: Int) { SIXTY(2), SIXTY_FG(3) }
 
-enum class Upscaler(val key: String) { BILINEAR("bilinear"), FSR("fsr") }
+/** Scan-out filter; code = present_effect_live (1 bilinear, 2 FSR 1, 3 CAS). */
+enum class Upscaler(val key: String, val code: Int) { BILINEAR("bilinear", 1), FSR("fsr", 2), CAS("cas", 3) }
 
 /** Which renderer draws the game. Renut (native Direct3D -> Vulkan) is being written for this game. */
 /** How the 16:9 picture fills a wider phone screen: black side bars, or stretched to the whole width. */
@@ -87,7 +88,8 @@ class SettingsStore(context: Context) {
         return Settings(
             orientation = e("orientation", Orientation.entries.toTypedArray(), d.orientation) { it.key },
             renderHeight = storedRenderHeight(prefs, d.renderHeight),
-            upscaler = if (prefs.getBoolean("fsr", false)) Upscaler.FSR else Upscaler.BILINEAR,
+            upscaler = prefs.getString("upscaler", null)?.let { k -> Upscaler.entries.firstOrNull { it.key == k } }
+                ?: if (prefs.getBoolean("fsr", false)) Upscaler.FSR else Upscaler.BILINEAR,
             fpsMode = if (prefs.getInt("fps_mode", 2) == 3) FpsMode.SIXTY_FG else FpsMode.SIXTY,
             renderer = e("renderer", Renderer.entries.toTypedArray(), d.renderer) { it.key },
             aspect = e("aspect", AspectMode.entries.toTypedArray(), d.aspect) { it.key },
@@ -120,6 +122,7 @@ class SettingsStore(context: Context) {
             .putString("orientation", s.orientation.key)
             .putInt("render_height", s.renderHeight)
             .putInt("render_scale", xeniaScale(s.renderHeight))
+            .putString("upscaler", s.upscaler.key)
             .putBoolean("fsr", s.upscaler == Upscaler.FSR)
             .putInt("fps_mode", s.fpsMode.code)
             .putString("renderer", s.renderer.key)

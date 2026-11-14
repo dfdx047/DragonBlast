@@ -68,6 +68,7 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                 options = listOf(
                     Choice(Upscaler.BILINEAR, stringResource(R.string.gfx_upscaler_bilinear), stringResource(R.string.recommended)),
                     Choice(Upscaler.FSR, "FSR 1", stringResource(R.string.gfx_upscaler_fsr_note)),
+                    Choice(Upscaler.CAS, "AMD CAS", stringResource(R.string.gfx_upscaler_cas_note)),
                 ),
                 selected = s.upscaler,
                 onSelect = { u -> vm.update { it.copy(upscaler = u) } },

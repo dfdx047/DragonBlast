@@ -1,0 +1,26 @@
+diff --git a/src/ui/presenter.cpp b/src/ui/presenter.cpp
+index 4a383e36..932d5286 100644
+--- a/src/ui/presenter.cpp
++++ b/src/ui/presenter.cpp
+@@ -33,7 +33,7 @@
+ 
+ REXCVAR_DEFINE_UINT32(present_effect_live, 0, "UI/Presenter",
+                       "Live override of present_effect, read every paint: 0 = use present_effect, "
+-                      "1 = bilinear, 2 = FSR 1 (where built)")
++                      "1 = bilinear, 2 = FSR 1, 3 = CAS (where built)")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+ REXCVAR_DEFINE_BOOL(host_present_from_non_ui_thread, true, "UI/Presenter",
+                     "Allow presentation from non-UI thread");
+@@ -931,8 +931,10 @@ std::unique_lock<std::mutex> Presenter::ConsumeGuestOutput(
+     *paint_config_out = guest_output_paint_config_;
+     if (const uint32_t live = REXCVAR_GET(present_effect_live)) {
+ #if defined(REX_HAS_FIDELITYFX_SDK)
+-      paint_config_out->SetEffect(live == 2 ? GuestOutputPaintConfig::Effect::kFsr
+-                                            : GuestOutputPaintConfig::Effect::kBilinear);
++      // Dragon Blast (0044): 3 = AMD CAS.
++      paint_config_out->SetEffect(live == 2   ? GuestOutputPaintConfig::Effect::kFsr
++                                  : live == 3 ? GuestOutputPaintConfig::Effect::kCas
++                                              : GuestOutputPaintConfig::Effect::kBilinear);
+ #else
+       paint_config_out->SetEffect(GuestOutputPaintConfig::Effect::kBilinear);
+ #endif

@@ -88,5 +88,19 @@ Falta:
   - Ainda a 56–57 FPS na luta CPU × CPU tanto a 720p como a 1080p: o jogo perde a VBlank em ~5 % dos quadros
     (thread principal ~60 % ocupada, 92 % no código do jogo). A investigar: espera pelos threads de trabalho do jogo,
     afinidade (modo 7 experimental) e o aquecimento (estado térmico 3, 86 °C, depois de ~10 min).
-- A seguir: 60 estáveis na luta CPU × CPU; contador de FPS do launcher no Renut (hoje mostra "--"); depois o RP5
-  (perfil SD 480+); checar efeitos (aura, raios, explosões).
+- Opções do launcher testadas no Poco (2026-11-14, luta CPU × CPU, ao vivo pelo menu do jogo):
+  - Resolução e escalonador mudam na hora no Renut (log `Render resolution`, capturas em pausa comparadas).
+  - Custo do escalonador a 2712×1220 (`present and overlays`): bilinear 1,2 ms, AMD CAS 3,9 ms (novo: patch
+    renut/0207 e SDK 0044, `present_effect_live=3`), FSR 1 3,3 ms com origem 540p/360p e 6,2 ms com 720p.
+  - GPU por quadro: 1080p bilinear 15,7; 720p bilinear 9,6; 720p CAS 12,5; 540p bilinear 8,4; 540p FSR 10,6;
+    360p FSR 8,5 ms. Os FPS ficam em 55–57 em todos: o limite é a thread principal do jogo, não a GPU.
+  - Imagem: 720p + CAS fica perto de 1080p na textura da grama; o FSR refaz bordas a 540p/360p mas não detalhe.
+    FSR só compensa abaixo de 720p.
+  - 120 FPS (geração de quadros do Renut, `dbz3_frame_interpolation`, cvars na cola; a cola passa a taxa da tela
+    de `files/display_hz.txt`): funciona (2 quadros por quadro do jogo a 120 Hz), mas no Poco o jogo cai para
+    35–42 FPS em qualquer resolução (360p: GPU 9 ms, thread de render ocupada 7,6 ms; o jogo espera 4–8 ms no
+    Swap). O bloqueio fica no `acquireTexture` dos dois presents; 4 imagens na swap chain (renut/0208,
+    `swordman_renut_swap_images`) não ajudam. No Odin 3 (Adreno) chegava a 117. Marcado experimental.
+  - Contador de FPS do launcher no Renut: a cola alimenta `kFrameTimeUs` a cada meio segundo (antes "--").
+- A seguir: 60 estáveis na luta CPU × CPU; geração de quadros no Mali; depois o RP5 (perfil SD 480+); checar
+  efeitos (aura, raios, explosões).

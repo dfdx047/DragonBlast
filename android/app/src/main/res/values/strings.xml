@@ -109,13 +109,14 @@
     <string name="menu_info_render">Drawn at %1$s, shown on %2$s</string>
     <string name="gfx_upscaler">Upscaler</string>
     <string name="gfx_upscaler_short">How the picture is stretched to the screen.</string>
-    <string name="gfx_upscaler_long">Bilinear: plain and soft, the lightest. Recommended at 720p and above.\n\nFSR 1 (AMD FidelityFX Super Resolution): sharper edges when the game draws well below your screen (540p and lower), for a small GPU cost.</string>
+    <string name="gfx_upscaler_long">Bilinear: plain and soft, the lightest. Recommended at 720p and above.\n\nFSR 1 (AMD FidelityFX Super Resolution): rebuilds sharper edges when the game draws well below your screen (540p and lower), for a small GPU cost.\n\nAMD CAS (Contrast Adaptive Sharpening): sharpens the picture after the bilinear stretch; good at 720p and 1080p, where FSR has little to rebuild. All three change at once from the in-game menu.</string>
     <string name="gfx_upscaler_bilinear">Bilinear</string>
     <string name="gfx_upscaler_fsr_note">sharper at low resolution</string>
+    <string name="gfx_upscaler_cas_note">sharpens, same size</string>
     <string name="gfx_frames">Frame rate</string>
     <string name="gfx_fps">Frames per second</string>
     <string name="gfx_fps_short">60 is the game\'s own speed.</string>
-    <string name="gfx_fps_long">Raging Blast 2 runs its game logic once per frame, so it always plays at 60: capping it at 30 would make the whole game run at half speed.\n\n120 FPS: frame generation adds one interpolated picture between two real ones, for 120 Hz screens. Smoother motion, about one frame more of input delay and more battery.</string>
+    <string name="gfx_fps_long">Raging Blast 2 runs its game logic once per frame, so it always plays at 60: capping it at 30 would make the whole game run at half speed.\n\n120 FPS: frame generation adds one interpolated picture between two real ones, for 120 Hz screens. Smoother motion, about one frame more of input delay and more battery. Experimental: on Mali GPUs (e.g. Poco X6 Pro) the game itself currently drops to 35-40 FPS with it.</string>
     <string name="gfx_fps_fg_note">frame generation</string>
     <string name="gfx_show_fps">Show FPS</string>
     <string name="gfx_show_fps_short">Frame counter in the corner.</string>
