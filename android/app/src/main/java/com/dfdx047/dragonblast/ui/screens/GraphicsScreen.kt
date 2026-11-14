@@ -110,17 +110,23 @@ fun GraphicsScreen(vm: LauncherViewModel) {
         }
 
         SectionCard(stringResource(R.string.gfx_frames), Icons.Outlined.Speed) {
-            ChoiceRow(
-                title = stringResource(R.string.gfx_fps),
-                help = help(R.string.gfx_fps_short, R.string.gfx_fps_long),
-                options = listOf(
-                    Choice(FpsMode.SIXTY, "60 FPS", stringResource(R.string.recommended)),
-                    Choice(FpsMode.SIXTY_FG, "120 FPS", stringResource(R.string.gfx_fps_fg_note)),
-                ),
-                selected = s.fpsMode,
-                onSelect = { m -> vm.update { it.copy(fpsMode = m) } },
-            )
-            Divider()
+            // 120 FPS (frame generation) only on displays of 100 Hz or more (a 60 Hz phone like the Mi A3 has nothing
+            // to show the generated frames on).
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val high = androidx.compose.runtime.remember { org.rb2recomp.android.LaunchConfig.highRefreshDisplay(context) }
+            if (high || s.fpsMode == FpsMode.SIXTY_FG) {
+                ChoiceRow(
+                    title = stringResource(R.string.gfx_fps),
+                    help = help(R.string.gfx_fps_short, R.string.gfx_fps_long),
+                    options = listOf(
+                        Choice(FpsMode.SIXTY, "60 FPS", stringResource(R.string.recommended)),
+                        Choice(FpsMode.SIXTY_FG, "120 FPS", stringResource(R.string.gfx_fps_fg_note)),
+                    ),
+                    selected = s.fpsMode,
+                    onSelect = { m -> vm.update { it.copy(fpsMode = m) } },
+                )
+                Divider()
+            }
             SettingSwitch(
                 stringResource(R.string.gfx_show_fps), help(R.string.gfx_show_fps_short, R.string.gfx_show_fps_long), s.showFps,
             ) { v -> vm.update { it.copy(showFps = v) } }

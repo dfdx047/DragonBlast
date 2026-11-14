@@ -104,3 +104,28 @@ Falta:
   - Contador de FPS do launcher no Renut: a cola alimenta `kFrameTimeUs` a cada meio segundo (antes "--").
 - A seguir: 60 estáveis na luta CPU × CPU; geração de quadros no Mali; depois o RP5 (perfil SD 480+); checar
   efeitos (aura, raios, explosões).
+
+## Mi A3 — aparelho fraco (2026-11-14)
+Snapdragon 665 (4× A73 2,0 GHz + 4× A53), Adreno 610, Armv8.0 sem LSE, 3,6 GB, tela 1560×720 a 60 Hz, LineageOS.
+- Motor Armv8.0 (`THPS_MARCH=armv8-a`, SDK 0045): o LSE só fica nos helpers `__aarch64_*`, que escolhem em execução.
+- Driver do sistema (Qualcomm V@502, Vulkan 1.1) não tem descriptor indexing: o Renut fecha. Com Turnip funciona:
+  o APK agora leva o Turnip (`tools/android/fetch_turnip.sh` → `assets/drivers`, +31 MB) e o modo Automático o
+  usa sozinho no Adreno 6xx (`Custom Vulkan driver … turnip … loaded`). Renut remapeia os atributos de vértice para
+  caber em 16 (renut/0209); a cola entrega o loader do Turnip ao Renut (`REX_VULKAN_LOADER_HANDLE`).
+- Luta CPU × CPU, Renut, Turnip R8 (frio → quente): 360p bilinear 54–59 FPS → ~40 depois de ~3 min (CPU 77–86 °C,
+  GPU 950 → 745 MHz); 360p CAS 48; 480p 43; 540p 39–41; 720p 25. GPU a 360p: R8 e T27 18,5 ms, Purple T30 12,5 ms.
+  Afinidade: modo 1 no Renut (modo 2 deixava os trabalhadores nos A53 e a thread principal em `sched_yield`: 30 FPS).
+  O RB2 roda a lógica por quadro: 40 FPS = jogo a 67 % da velocidade.
+- Padrões para aparelho fraco (`LaunchConfig.weakDevice`: Adreno < 630 ou CPU sem `atomics`): 360p, brilho e sombras
+  desligados (Leve). A opção 120 FPS some do launcher e do menu do jogo em telas sem modo ≥ 100 Hz.
+- Controles na tela (esquema Raging Blast e BT3) testados botão a botão pelo log `bt3 in` e com dois dedos
+  (`build/lab/mia3_mt.py`, `sendevent` no `fts_ts`; o adb do LineageOS é root): RT+Y e BT3 R3+△ transformam
+  (Goku → SSJ). LT/RT chegam como gatilhos.
+- Xenia no Mi A3: com Turnip R8 e `render_scale=50` caiu com SIGSEGV logo depois do primeiro resolve (compilação de
+  shader); com Purple T30 abortou (`AHardwareBuffer` 4×4 falhou, `VulkanPresenter: Failed to submit`). Renut é o
+  caminho no Adreno 6xx.
+- **Aberto:** na tela Battle (Player / Time Limit / CPU Difficulty) o jogo parou de aceitar entrada duas vezes,
+  sempre depois de mexer nas opções com o analógico. O controle virtual entrega tudo (log
+  `setprop log.tag.DragonBlastPad V`: `pad [A]` / `pad []` a cada toque) e o jogo lê o pad 60×/s, mas nada mexe;
+  abrir e fechar o menu lateral (XN_SYS_UI 1 → 0) destrava na hora. Não é o save (DB_SAVE não foi escrito). Próximo
+  passo: logar no SDK os XN_SYS_UI dos diálogos/headless do XAM (`xam_ui.cpp`) e ver se algum fica sem o "0".

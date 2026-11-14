@@ -371,7 +371,10 @@ class MenuModel(
                 update { it.copy(upscaler = u) }
                 host.setCvar("present_effect_live", u.code.toString())
             },
-            MChoice(
+        ) + listOfNotNull(
+            // 120 FPS only on displays of 100 Hz or more (LaunchConfig.highRefreshDisplay).
+            if (!org.rb2recomp.android.LaunchConfig.highRefreshDisplay(activity) && st.fpsMode != FpsMode.SIXTY_FG) null
+            else MChoice(
                 s(R.string.gfx_fps), s(R.string.gfx_fps_short),
                 listOf("60 FPS", "120 FPS (" + s(R.string.gfx_fps_fg_note) + ")"), st.fpsMode.ordinal,
             ) { i ->
@@ -379,6 +382,7 @@ class MenuModel(
                 update { it.copy(fpsMode = m) }
                 applyFps(m)
             },
+        ) + listOf<MenuItem>(
             MChoice(
                 s(R.string.gfx_resolution), s(R.string.gfx_resolution_short),
                 heights.map { SettingsStore.heightLabel(it) }, heightIndex, reopen = !renut,

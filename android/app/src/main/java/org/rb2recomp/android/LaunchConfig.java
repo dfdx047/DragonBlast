@@ -104,11 +104,46 @@ public final class LaunchConfig {
         return "renut".equals(context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("renderer", "renut"));
     }
 
+    /**
+     * Weak phones (Adreno below 630, or an Armv8.0 CPU without LSE atomics such as the Snapdragon 665 of the Mi A3):
+     * they start at 360p with the bloom and the characters' shadows off until the player picks otherwise. Mi A3, Renut,
+     * CPU vs CPU fight: 55-59 FPS cold at 360p, 44 at 480p, 26 at 720p; ~40 once warm.
+     */
+    public static boolean weakDevice(Context context) {
+        Matcher m = Pattern.compile("Adreno \\(TM\\) (\\d{3})").matcher(gpuName(context));
+        if (m.find() && Integer.parseInt(m.group(1)) < 630) return true;
+        try (BufferedReader r = new BufferedReader(new FileReader("/proc/cpuinfo"))) {
+            for (String line; (line = r.readLine()) != null; ) {
+                if (line.startsWith("Features")) return !line.contains(" atomics");
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    /** Whether the display has a mode of 100 Hz or more: the 120 FPS (frame generation) option needs one. */
+    public static boolean highRefreshDisplay(Context context) {
+        try {
+            android.view.Display d = ((android.hardware.display.DisplayManager)
+                    context.getSystemService(Context.DISPLAY_SERVICE)).getDisplay(android.view.Display.DEFAULT_DISPLAY);
+            for (android.view.Display.Mode mode : d.getSupportedModes()) {
+                if (mode.getRefreshRate() >= 100f) return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** The starting render height (Settings.kt's default too): 360p on weak phones, the game's 720p elsewhere. */
+    public static int defaultRenderHeight(Context context) {
+        return weakDevice(context) ? 360 : 720;
+    }
+
     /** Render height chosen in the launcher (Settings.kt render_height); older saves kept a percent of 720p. */
     static int renderHeight(Context context) {
         android.content.SharedPreferences p = context.getSharedPreferences("options", Context.MODE_PRIVATE);
         int h = p.getInt("render_height", 0);
-        if (h <= 0) h = p.getInt("render_scale", 100) * 720 / 100;
+        if (h <= 0) h = p.contains("render_scale") ? p.getInt("render_scale", 100) * 720 / 100 : defaultRenderHeight(context);
         int[] heights = renut(context) ? new int[] {360, 480, 540, 720, 1080, 1440, 2160} : new int[] {360, 480, 540, 720};
         int best = 720;
         for (int c : heights) {
@@ -400,7 +435,8 @@ public final class LaunchConfig {
             // "120 FPS": the Renut's own frame generation (renut/0025, glue cvar), not the emulated GPU's.
             defaults.add("--dbz3_frame_interpolation=" + frameGeneration(fpsMode(context)));
             android.content.SharedPreferences o = context.getSharedPreferences("options", Context.MODE_PRIVATE);
-            String skip = renutSkipList(o.getBoolean("fx_bloom", true), o.getBoolean("fx_shadows", true));
+            boolean fx = !weakDevice(context);
+            String skip = renutSkipList(o.getBoolean("fx_bloom", fx), o.getBoolean("fx_shadows", fx));
             if (!skip.isEmpty()) defaults.add("--swordman_renut_skip_ps=" + skip);
         }
         // Internal resolution; the presenter scales it to the screen. The Renut draws at a height (360p to 4K, its

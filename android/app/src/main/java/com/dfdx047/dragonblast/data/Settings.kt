@@ -94,8 +94,8 @@ class SettingsStore(context: Context) {
             renderer = e("renderer", Renderer.entries.toTypedArray(), d.renderer) { it.key },
             aspect = e("aspect", AspectMode.entries.toTypedArray(), d.aspect) { it.key },
             showFps = prefs.getBoolean("show_fps", false),
-            fxBloom = prefs.getBoolean("fx_bloom", true),
-            fxShadows = prefs.getBoolean("fx_shadows", true),
+            fxBloom = prefs.getBoolean("fx_bloom", !weak),
+            fxShadows = prefs.getBoolean("fx_shadows", !weak),
             pauseInBackground = prefs.getBoolean("pause_background", true),
             stereoAudio = prefs.getBoolean("audio_stereo", true),
             touchMode = e("touch_mode", TouchMode.entries.toTypedArray(), d.touchMode) { it.key },
@@ -157,8 +157,9 @@ class SettingsStore(context: Context) {
         if (keep != null) prefs.edit().putString("language", keep).apply()
     }
 
-    /** Starting resolution: the game's own 720p (Renut draws it at 60 FPS on a Dimensity 8300 / Mali-G615). */
-    private fun defaultRenderHeight(): Int = 720
+    /** Starting resolution: the game's own 720p, 360p on weak phones (LaunchConfig.weakDevice). */
+    private fun defaultRenderHeight(): Int = org.rb2recomp.android.LaunchConfig.defaultRenderHeight(app)
+    private val weak by lazy { org.rb2recomp.android.LaunchConfig.weakDevice(app) }
 
     companion object {
         /** Render heights the Renut draws at (sa2_render_height_handheld); the width follows 16:9. */

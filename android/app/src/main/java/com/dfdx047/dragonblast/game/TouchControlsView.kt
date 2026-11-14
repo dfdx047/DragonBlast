@@ -552,6 +552,11 @@ class TouchControlsView(context: Context) : View(context) {
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (editMode) return onEditTouch(ev)
+        if (HelperEngine.PAD_LOG && ev.actionMasked != MotionEvent.ACTION_MOVE) {
+            android.util.Log.v(HelperEngine.PAD_TAG, "touch ${MotionEvent.actionToString(ev.actionMasked)} " +
+                "pid ${ev.getPointerId(ev.actionIndex)} at %.0f,%.0f; held $pointers, pressed $pressed, stick $stickPointer"
+                    .format(ev.getX(ev.actionIndex), ev.getY(ev.actionIndex)))
+        }
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val i = ev.actionIndex

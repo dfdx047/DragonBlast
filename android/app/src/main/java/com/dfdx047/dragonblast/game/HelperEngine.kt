@@ -293,6 +293,9 @@ class HelperEngine {
             sent.clear()
             return
         }
+        if (PAD_LOG && (wanted != sent || lx != sentLx || ly != sentLy)) {
+            android.util.Log.v(PAD_TAG, "pad ${wanted.sorted()} stick %.2f %.2f".format(lx, ly))
+        }
         for (i in PadInput.entries) {
             val on = i in wanted
             if (on == (i in sent)) continue
@@ -325,6 +328,10 @@ class HelperEngine {
     }
 
     companion object {
+        /** Debug log of the touch controls and of what reaches the virtual pad: `setprop log.tag.DragonBlastPad V`
+         *  before starting the game. */
+        const val PAD_TAG = "DragonBlastPad"
+        val PAD_LOG: Boolean by lazy { android.util.Log.isLoggable(PAD_TAG, android.util.Log.VERBOSE) }
         /** 1,5 s a 60 Hz (pedido do usuario: no maximo ~2 s). */
         const val MENU_DELAY_TICKS = 90
         /** ~1,5 s fora do estado de voo antes de sair do layout do mapa. */
