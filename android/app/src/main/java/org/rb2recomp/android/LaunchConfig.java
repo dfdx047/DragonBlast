@@ -172,6 +172,11 @@ public final class LaunchConfig {
         return p.getBoolean("fsr", false) ? "fsr" : "bilinear";
     }
 
+    /** android_affinity_mode for 60 FPS: 1 with the Renut, 2 with Xenia (see buildArguments). */
+    public static int affinityMode(Context context) {
+        return renut(context) ? 1 : 2;
+    }
+
     static boolean fsr(Context context) {
         return context.getSharedPreferences("options", Context.MODE_PRIVATE).getBoolean("fsr", false);
     }
@@ -425,8 +430,10 @@ public final class LaunchConfig {
         defaults.add("--gpu_frame_generation=" + frameGeneration(fpsMode));
         if (sixty(fpsMode)) {
             defaults.add("--gpu_swap_fps_cap=60");
-            // The GPU command processor alone on the prime core.
-            defaults.add("--android_affinity_mode=2");
+            // Xenia: the GPU command processor alone on the prime core. The Renut has no command processor: mode 1,
+            // every hot thread on any performance core (Mi A3, Snapdragon 665: 30 FPS in mode 2, 55-59 in mode 1,
+            // 53-57 in mode 7; the game's main thread waits on its worker threads).
+            defaults.add("--android_affinity_mode=" + affinityMode(context));
             if (!frameGeneration(fpsMode)) {
                 // A frame still being emulated at a vblank holds that vblank until it is ready.
                 defaults.add("--gpu_vblank_hold_us=15000");

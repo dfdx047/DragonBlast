@@ -59,6 +59,12 @@ android {
         }
     }
 
+    // The Armv8.0 engine (tools/android/build_native.sh with THPS_MARCH=armv8-a) stages its libraries elsewhere:
+    // -Prb2.jniLibs=<dir> packages that folder instead of src/main/jniLibs.
+    (project.findProperty("rb2.jniLibs") as String?)?.let { dir ->
+        sourceSets.getByName("main").jniLibs.setSrcDirs(listOf(dir))
+    }
+
     packaging {
         jniLibs {
             // The SDK dlopen()s librexgpu-xenos.so by path from the native library directory.

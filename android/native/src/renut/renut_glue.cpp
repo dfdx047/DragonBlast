@@ -302,10 +302,20 @@ void RenutLockstepFrame(uint64_t frame, const rex::ui::RawImage* image) {
 }  // namespace sa2::capture
 
 // ---------------------------------------------------------------------------------------------------------------
-// plume's Vulkan driver (renut/0006): the system one for now (the Drivers tab's custom driver is the Xenia path's,
-// custom_driver.cpp).
+// plume's Vulkan driver (renut/0006): the Drivers tab's driver (Turnip...) when custom_driver.cpp loaded one through
+// libadrenotools before the graphics start (it leaves the loader handle in REX_VULKAN_LOADER_HANDLE, as for the
+// Xenia path); the system's libvulkan otherwise. The Adreno 610's own driver (Mi A3, Vulkan 1.1) lacks what the
+// Renut needs; Turnip has it.
 // ---------------------------------------------------------------------------------------------------------------
-extern "C" void* plume_android_vulkan_library() { return nullptr; }
+extern "C" void* plume_android_vulkan_library() {
+  static void* const handle = [] {
+    const char* text = std::getenv("REX_VULKAN_LOADER_HANDLE");
+    void* h = text && *text ? reinterpret_cast<void*>(std::strtoull(text, nullptr, 16)) : nullptr;
+    REXLOG_INFO("Renut: Vulkan driver {}", h ? "from the Drivers tab (libadrenotools)" : "of the system");
+    return h;
+  }();
+  return handle;
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // What the translated shaders and plume assume without checking. Runs in OnPreSetup, before any surface: without
@@ -319,6 +329,7 @@ void SetAndroidClearFold(bool enabled);  // renut/0106
 }
 namespace renut::gpu {
 void SetPointSpriteUbo(bool on);  // renut/0108
+void SetMaxVertexInputLocations(uint32_t count);  // renut/0209
 }
 
 REXCVAR_DEFINE_BOOL(swordman_renut_point_ubo, false, "SwordMan",
@@ -390,8 +401,9 @@ bool SwordManRenutDeviceSupported(std::string* why) {
       REXLOG_WARN("Renut: no vertexPipelineStoresAndAtomics (memexport in vertex shaders not guaranteed)");
     need(d32s8.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT, "D32S8");
     if (p.properties.vendorID != 0x5143) need(p.properties.limits.maxBoundDescriptorSets >= 5, "5-descriptor-sets");
-    // The Renut's vertex layouts bind every location of RENUT_VERTEX_INPUT_LOCATIONS (0-23, renut/0201).
-    need(p.properties.limits.maxVertexInputAttributes >= 24, "24-vertex-attributes");
+    // Every vertex input RB2's shaders read sits below location 16 (renut/0209); the layouts stop at the limit.
+    need(p.properties.limits.maxVertexInputAttributes >= 16, "16-vertex-attributes");
+    renut::gpu::SetMaxVertexInputLocations(p.properties.limits.maxVertexInputAttributes);
     REXLOG_INFO("Renut: {} (Vulkan {}.{}), geometryShader {}, maxBoundDescriptorSets {}, maxVertexInputAttributes {}",
                 p.properties.deviceName, VK_API_VERSION_MAJOR(p.properties.apiVersion),
                 VK_API_VERSION_MINOR(p.properties.apiVersion), f.features.geometryShader ? "yes" : "no",

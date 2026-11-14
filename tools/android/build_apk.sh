@@ -23,7 +23,10 @@ if [ ! -x gradlew ]; then
 fi
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-ls app/src/main/jniLibs/arm64-v8a/*.so >/dev/null 2>&1 || { echo "no native libraries staged: run build_native.sh first"; exit 1; }
-JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}" ./gradlew --no-daemon -Prb2.sdk="$SDK_TREE" assembleRelease "$@"
+# JNILIBS=<dir with arm64-v8a/>: package another engine (the Armv8.0 one: android/native-build/jniLibs-armv8-a).
+JNI="${JNILIBS:-app/src/main/jniLibs}"
+case "$JNI" in /*|app/*) ;; *) JNI="$REPO/$JNI" ;; esac   # relative to the repository
+ls "$JNI"/arm64-v8a/*.so >/dev/null 2>&1 || { echo "no native libraries staged in $JNI: run build_native.sh first"; exit 1; }
+JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}" ./gradlew --no-daemon -Prb2.sdk="$SDK_TREE" -Prb2.jniLibs="$(realpath "$JNI")" assembleRelease "$@"
 APK=app/build/outputs/apk/release/app-release.apk
 ls -la "$APK"

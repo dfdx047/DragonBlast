@@ -1,0 +1,104 @@
+Dragon Blast (2026-11-14): vertex input locations for 16-attribute GPUs (Adreno 610, Mi A3 with Turnip).
+Every input Raging Blast 2's shaders read moves below location 16 (TexCoord 4-7 to 1-4, PointSize to 7); the
+ones it never reads take 16-23. SetMaxVertexInputLocations drops elements and zero streams above the device limit.
+Needs the shaders translated again (tools/renut/shaders.sh).
+
+diff --git a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
+--- a/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
++++ b/app/thirdparty/reblue-XenosRecomp/XenosRecomp/shader_common.h
+@@ -28,15 +28,18 @@
+ // SPIR-V vertex input locations for reNut, shared with its host input-layout
+ // builder. Covers every vertex element N&B's shaders declare. Like reblue's
+ // above, only a define: the recompiler reads it under RENUT_RECOMP.
++// Dragon Blast (renut/0209): every input Raging Blast 2's shaders read (Position 0, Normal, Tangent, TexCoord 0-2
++// and 4-7, Color 0-1, PointSize) sits below location 16, the Adreno 610's maxVertexInputAttributes (Mi A3 with
++// Turnip); the ones it never reads (Position 1-4, Binormal, TexCoord 3 and 8-10...) take the rest.
+ #define RENUT_VERTEX_INPUT_LOCATIONS(X) \
+     X(Position,  0,  0) \
+-    X(Position,  1,  1) \
+-    X(Position,  2,  2) \
+-    X(Position,  3,  3) \
+-    X(Position,  4,  4) \
++    X(TexCoord,  4,  1) \
++    X(TexCoord,  5,  2) \
++    X(TexCoord,  6,  3) \
++    X(TexCoord,  7,  4) \
+     X(Normal,    0,  5) \
+     X(Tangent,   0,  6) \
+-    X(Binormal,  0,  7) \
++    X(PointSize, 0,  7) \
+     X(TexCoord,  0,  8) \
+     X(TexCoord,  1,  9) \
+     X(TexCoord,  2, 10) \
+@@ -45,14 +48,14 @@
+     X(Color,     1, 13) \
+     X(BlendWeight,  0, 14) \
+     X(BlendIndices, 0, 15) \
+-    X(TexCoord,  4, 16) \
+-    X(TexCoord,  5, 17) \
+-    X(TexCoord,  6, 18) \
+-    X(TexCoord,  7, 19) \
++    X(Position,  1, 16) \
++    X(Position,  2, 17) \
++    X(Position,  3, 18) \
++    X(Position,  4, 19) \
+     X(TexCoord,  8, 20) \
+     X(TexCoord,  9, 21) \
+     X(TexCoord, 10, 22) \
+-    X(PointSize, 0, 23)
++    X(Binormal,  0, 23)
+ 
+ // SPEC_CONSTANTS_ONLY keeps the HLSL below out of host C++ TUs, which IntelliSense would otherwise parse.
+ #if (!defined(__cplusplus) || defined(__INTELLISENSE__)) && !defined(SHADER_COMMON_SPEC_CONSTANTS_ONLY)
+diff --git a/app/src/renut_engine/gpu/render/vertex_format.h b/app/src/renut_engine/gpu/render/vertex_format.h
+--- a/app/src/renut_engine/gpu/render/vertex_format.h
++++ b/app/src/renut_engine/gpu/render/vertex_format.h
+@@ -114,4 +114,8 @@
+ 
+ const char *UsageSemantic(u8 usage);
+ 
++// Dragon Blast (renut/0209): the device's maxVertexInputAttributes; the zero streams for the inputs a layout lacks
++// stop below it (the Adreno 610 has 16, renut/0209's table keeps every input RB2 reads under that).
++void SetMaxVertexInputLocations(u32 count);
++
+ } // namespace renut::gpu
+diff --git a/app/src/renut_engine/gpu/render/vertex_format.cpp b/app/src/renut_engine/gpu/render/vertex_format.cpp
+--- a/app/src/renut_engine/gpu/render/vertex_format.cpp
++++ b/app/src/renut_engine/gpu/render/vertex_format.cpp
+@@ -43,6 +43,9 @@
+     "BINORMAL", "TESSFACTOR", "POSITIONT", "COLOR", "FOG", "DEPTH", "SAMPLE",
+ };
+ 
++// Dragon Blast (renut/0209): SetMaxVertexInputLocations.
++u32 g_max_vertex_locations = 32;
++
+ // Shared with the shaders through shader_common.h.
+ bool InputLocation(u8 usage, u8 usage_index, u32 &location) {
+   struct Row {
+@@ -400,6 +403,8 @@
+   return type;
+ }
+ 
++void SetMaxVertexInputLocations(u32 count) { g_max_vertex_locations = count; }  // renut/0209
++
+ const char *UsageSemantic(u8 usage) {
+   return usage < std::size(kUsageSemantics) ? kUsageSemantics[usage] : "TEXCOORD";
+ }
+@@ -417,6 +422,8 @@
+     host.usage_index = element.UsageIndex;
+     if (!InputLocation(host.usage, host.usage_index, host.location))
+       continue;  // not an input any N&B shader declares
++    if (host.location >= g_max_vertex_locations)
++      continue;  // Dragon Blast (renut/0209): above the device's limit; no RB2 shader reads it
+     // A repeated semantic would make the input layout invalid; the first wins.
+     const bool repeated = std::any_of(
+         std::begin(layout.streams), std::end(layout.streams), [&](const HostVertexStream &s) {
+@@ -481,6 +488,8 @@
+ #undef RENUT_ROW
+   };
+   for (const Row &row : kRows) {
++    if (row.location >= g_max_vertex_locations)  // Dragon Blast (renut/0209)
++      continue;
+     const bool present =
+         std::any_of(layout.input_elements.begin(), layout.input_elements.end(),
+                     [&](const plume::RenderInputElement &e) { return e.location == row.location; });

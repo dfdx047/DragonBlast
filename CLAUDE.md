@@ -14,8 +14,11 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 | Aparelho | Serial | GPU | Uso |
 |---|---|---|---|
 | Poco X6 Pro | `4LPF6HMFEYPZCEJB` | Mali-G615 MC6 (Dimensity 8300) | aparelho de teste deste projeto (2026-11-13) |
+| Xiaomi Mi A3 | `37b2869d7607` (USB) | Adreno 610 (Snapdragon 665, Armv8.0) | aparelho fraco de teste (2026-11-14); Renut só com Turnip |
 
-- Sempre `adb -s <serial>`. Outros aparelhos só com pedido do desenvolvedor. O Mi A3 nunca.
+- Sempre `adb -s <serial>`. Outros aparelhos só com pedido do desenvolvedor.
+- Antes de cada toque ou captura, conferir que o Dragon Blast está em primeiro plano (`build/lab/guard.sh`): o
+  desenvolvedor usa os aparelhos ao mesmo tempo.
 - O Poco não tem cooler e esquenta: medições longas com cuidado.
 - Pasta do app no aparelho: `/sdcard/Android/data/com.dfdx047.dragonblast/files` (jogo em `game/`, `logs/`, `cache/`).
 - Arquivos de teste que pusermos no aparelho são apagados no fim do teste.
@@ -38,7 +41,7 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 - Só a launcher (sem o SDK ao lado do repositório o build entra sozinho nesse modo):
   `cd android && ./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - Jogo completo (tudo dentro de `build/`, com `TMPDIR=build/tmp`):
-  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0044).
+  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0045).
      Precisa do `spirv-cross`: sem pacote no sistema, ele foi compilado em `build/third_party/spirv-cross-build`
      (tag vulkan-sdk-1.4.304.0) e o script o encontra sozinho.
   2. `tools/android/build_host_cli.sh` (recompilador `rexglue` para o PC).
@@ -52,8 +55,13 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
      `patches/renut` (o CMake recusa a árvore com alterações à mão).
   5. `tools/android/build_native.sh` (NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema) e `build_apk.sh`.
      Ou tudo de uma vez: `RB2_GAME=build/game tools/android/rebuild.sh <tag>` → `build/apk/`.
+  - Motor Armv8.0 (celulares sem LSE, ex.: Snapdragon 665 do Mi A3): `THPS_MARCH=armv8-a tools/android/build_native.sh`
+    (pasta própria `android/native-build/RelWithDebInfo-armv8-a`, libs em `android/native-build/jniLibs-armv8-a`) e
+    `JNILIBS=android/native-build/jniLibs-armv8-a tools/android/build_apk.sh`. Os dois APKs saem do mesmo
+    `app-release.apk`: copiar cada um para `build/apk/dragonblast-armv8.{0,2}.apk` antes de gerar o outro.
   - `default.xex` suportado: 7 151 616 bytes, SHA-256 `d0291e64…e989c` (USA Rev 1).
-- Instalar no Poco: `adb -s 4LPF6HMFEYPZCEJB install -r <apk>` ("Instalar via USB" ligado no HyperOS).
+- Instalar no Poco: `adb -s 4LPF6HMFEYPZCEJB install -r <apk>` ("Instalar via USB" ligado no HyperOS). No Mi A3
+  (`37b2869d7607`) só o APK Armv8.0.
 
 ## Licença
 - BSD-3-Clause do RB2 (`LICENSE`). Arquivos do jogo e código recompilado nunca no git nem num APK distribuído.

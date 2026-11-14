@@ -417,7 +417,7 @@ class MenuModel(
     private fun applyFps(m: FpsMode) {
         val fg = m == FpsMode.SIXTY_FG
         host.setCvar("gpu_swap_fps_cap", "60")
-        host.setCvar("android_affinity_mode", "2")
+        host.setCvar("android_affinity_mode", org.rb2recomp.android.LaunchConfig.affinityMode(activity).toString())
         host.setCvar("rb2_vsync_hz", "60")
         host.setCvar("gpu_frame_generation", fg.toString())
         host.setCvar("dbz3_frame_interpolation", fg.toString())  // Renut (its own frame generation)

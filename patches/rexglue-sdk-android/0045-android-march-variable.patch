@@ -1,0 +1,35 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f35b578d..bfee4110 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -263,9 +263,10 @@ configure_file(
+ )
+ 
+ # Output directories (multi-config appends /<Config>/ automatically)
+-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}")
+-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}")
+-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}")
++# Dragon Blast (0045): REXGLUE_OUT_SUFFIX keeps a second Android build (the Armv8.0 engine) out of the first one's files.
++set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}${REXGLUE_OUT_SUFFIX}")
++set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}${REXGLUE_OUT_SUFFIX}")
++set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${REXGLUE_ROOT}/out/${REX_PLATFORM}${REXGLUE_OUT_SUFFIX}")
+ 
+ # Sanitizer support for debugging memory corruption and undefined behavior
+ if(REXGLUE_ENABLE_SANITIZERS)
+diff --git a/cmake/rexglue_helpers.cmake b/cmake/rexglue_helpers.cmake
+index 186bdb88..7fdf6bf8 100644
+--- a/cmake/rexglue_helpers.cmake
++++ b/cmake/rexglue_helpers.cmake
+@@ -54,7 +54,11 @@ function(rexglue_apply_target_settings target_name)
+             # Android targets are Armv8.2+ phones/handhelds: inline LSE atomics instead of the
+             # out-of-line __aarch64_* helpers (a per-target -march here overrides the app's global one).
+             if(ANDROID)
+-                target_compile_options(${target_name} PRIVATE -march=armv8.2-a)
++                # Dragon Blast (0045): REXGLUE_ANDROID_MARCH, armv8-a for Armv8.0 phones (Snapdragon 665: no LSE).
++                if(NOT REXGLUE_ANDROID_MARCH)
++                    set(REXGLUE_ANDROID_MARCH "armv8.2-a")
++                endif()
++                target_compile_options(${target_name} PRIVATE -march=${REXGLUE_ANDROID_MARCH})
+             else()
+                 target_compile_options(${target_name} PRIVATE -march=armv8-a)
+             endif()

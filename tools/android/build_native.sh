@@ -6,7 +6,9 @@
 #
 # Environment: ANDROID_HOME (default ~/android-sdk), BUILD_TYPE (default RelWithDebInfo: the SDK
 # compiles its perf counters, and so the frame-time CSV, out of Release builds), JOBS, STRIP=1,
-# OPT_FLAGS (RelWithDebInfo compiler flags, default "-O3 -mtune=cortex-a715 -g -DNDEBUG": -1.5 % CP time, -0.25 W vs -O2).
+# OPT_FLAGS (RelWithDebInfo compiler flags, default "-O3 -mtune=cortex-a715 -g -DNDEBUG": -1.5 % CP time, -0.25 W vs -O2),
+# THPS_MARCH (default armv8.2-a; armv8-a = the Armv8.0 engine for phones without LSE atomics such as the
+# Snapdragon 665 of the Mi A3: own build folder, tuned for the Cortex-A73).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,19 +36,30 @@ else
   OUT="$REPO/android/native-build/$BUILD_TYPE"
 fi
 LIBS="$REPO/android/app/src/main/jniLibs/arm64-v8a"
+MARCH="${THPS_MARCH:-armv8.2-a}"
+TUNE=cortex-a715
+SUFFIX=""
+if [ "$MARCH" != armv8.2-a ]; then
+  SUFFIX="-$MARCH"
+  OUT="$OUT$SUFFIX"
+  TUNE=cortex-a73
+  LIBS="$REPO/android/native-build/jniLibs$SUFFIX/arm64-v8a"   # build_apk.sh JNILIBS=... packages it
+fi
+DEFAULT_OPT="-O3 -mtune=$TUNE -g -DNDEBUG"
 
 "$CMAKE" -S "$REPO/android/native" -B "$OUT" -G Ninja \
   -DCMAKE_MAKE_PROGRAM="$NINJA" \
   -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
   -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 -DANDROID_STL=c++_shared \
-  -DCMAKE_BUILD_TYPE="$BUILD_TYPE"   -DCMAKE_C_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:--O3 -mtune=cortex-a715 -g -DNDEBUG}"   -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:--O3 -mtune=cortex-a715 -g -DNDEBUG}" "${EXTRA[@]}"
+  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DTHPS_MARCH="$MARCH" -DREXGLUE_ANDROID_MARCH="$MARCH" -DREXGLUE_OUT_SUFFIX="$SUFFIX" \
+  -DCMAKE_C_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:-$DEFAULT_OPT}" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:-$DEFAULT_OPT}" "${EXTRA[@]}"
 "$CMAKE" --build "$OUT" --parallel "$JOBS"
 
 rm -rf "$LIBS"; mkdir -p "$LIBS"
 # The SDK suffixes its libraries with the build config (RelWithDebInfo -> "rd", Release -> none), and
 # both the runtime and the GPU plugin look each other up with that suffix, so keep the names as built.
 # The SDK also writes its libraries into its own tree (out/android-arm64), not into $OUT.
-SDK_OUT="${THPS_SDK:-$REPO/build/rexglue-sdk-android}/out/android-arm64"
+SDK_OUT="${THPS_SDK:-$REPO/build/rexglue-sdk-android}/out/android-arm64$SUFFIX"
 stage() { # glob
   local f; f="$(find "$OUT" "$SDK_OUT" -name "$1" -type f -newer "$OUT/CMakeCache.txt" 2>/dev/null | head -1)"
   [ -n "$f" ] || f="$(find "$OUT" "$SDK_OUT" -name "$1" -type f 2>/dev/null | head -1)"
