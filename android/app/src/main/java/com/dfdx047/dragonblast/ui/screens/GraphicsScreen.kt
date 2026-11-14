@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Wallpaper
@@ -16,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dfdx047.dragonblast.R
 import com.dfdx047.dragonblast.data.FpsMode
+import com.dfdx047.dragonblast.data.FxPreset
 import com.dfdx047.dragonblast.data.Renderer
 import com.dfdx047.dragonblast.data.AspectMode
 import com.dfdx047.dragonblast.data.SettingsStore
@@ -81,6 +83,29 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                 selected = s.aspect,
                 onSelect = { a -> vm.update { it.copy(aspect = a) } },
             )
+        }
+
+        if (s.renderer == Renderer.RENUT) {
+            SectionCard(stringResource(R.string.gfx_effects), Icons.Outlined.AutoAwesome, subtitle = stringResource(R.string.gfx_effects_sub)) {
+                ChoiceRow(
+                    title = null,
+                    options = listOf(
+                        Choice(FxPreset.LIGHT, stringResource(R.string.preset_light)),
+                        Choice(FxPreset.BALANCED, stringResource(R.string.preset_balanced)),
+                        Choice(FxPreset.QUALITY, stringResource(R.string.preset_quality)),
+                    ),
+                    selected = FxPreset.of(s),
+                    onSelect = { p -> vm.update { it.copy(fxBloom = p!!.bloom, fxShadows = p.shadows) } },
+                )
+                Divider()
+                SettingSwitch(
+                    stringResource(R.string.fx_bloom), help(R.string.fx_bloom_short, R.string.fx_bloom_long), s.fxBloom,
+                ) { v -> vm.update { it.copy(fxBloom = v) } }
+                Divider()
+                SettingSwitch(
+                    stringResource(R.string.fx_shadows), help(R.string.fx_shadows_short, R.string.fx_shadows_long), s.fxShadows,
+                ) { v -> vm.update { it.copy(fxShadows = v) } }
+            }
         }
 
         SectionCard(stringResource(R.string.gfx_frames), Icons.Outlined.Speed) {

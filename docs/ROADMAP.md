@@ -74,5 +74,19 @@ Falta:
 - Medido no Poco (Mali-G615, resolução 50 % = 640x368, FSR): boot, logos, vídeo, menus, seleção e luta certos;
   luta a 54–55 FPS (GPU 9,2–9,5 ms por quadro, thread de render 4,2 ms, ~290 draws por quadro); menus 60.
 - Launcher: Gráficos → Renderizador → Renut (beta) passa `--swordman_renderer=renut`.
-- A seguir: otimizar no Mali até 60 estáveis na luta e subir a resolução; contador de FPS do launcher no Renut
-  (hoje mostra "--"); depois o RP5 (perfil SD 480+); widescreen nativo; checar efeitos (aura, raios, explosões).
+- Otimização no Poco (2026-11-13), luta CPU × CPU (`build/lab/cpufight.sh`, tempo ∞), 1080p:
+  - Perfil de GPU ao vivo: `renut_gpu_profile=8` + `banjo_renut_diag_gpu_shaders=true` em `files/live_cvars.txt`.
+  - Mipmaps do host nos resolves (`swordman_renut_resolve_mips`) custavam 3,3–3,6 ms por quadro a 1080p: o jogo
+    copia a cena três vezes por quadro (para restaurá-la depois do bloom e dos efeitos a meia resolução) e só a
+    cópia do bloom é lida reduzida. Sem eles: GPU 19 → 14 ms.
+  - SDK 0043: o laço de eventos do SDL 3.5 nunca bloqueava no Android (o pump reinsere o "poll sentinel" e cada
+    evento novo manda um WAKE): um núcleo médio a 96–100 % o tempo todo. Corrigido.
+  - Mapa do quadro (shaders por hash `ps`): sombras 256×256 → cena 1280×720 → sombra aplicada `F5C3A164` → cópia
+    da cena, limpa, bloom 320×180 (`B1B362B3` redução e restauro, `4DC55DC2` desfoque, `90C56B1D` soma) → efeitos a
+    640×360 (`3B9EED21`, `BCAD25CD`, `1ACFCC66`, `056DEAA7`) → frontbuffer. Opções do launcher: brilho e sombras
+    (`swordman_renut_skip_ps`, ao vivo pelo patch 0204).
+  - Ainda a 56–57 FPS na luta CPU × CPU tanto a 720p como a 1080p: o jogo perde a VBlank em ~5 % dos quadros
+    (thread principal ~60 % ocupada, 92 % no código do jogo). A investigar: espera pelos threads de trabalho do jogo,
+    afinidade (modo 7 experimental) e o aquecimento (estado térmico 3, 86 °C, depois de ~10 min).
+- A seguir: 60 estáveis na luta CPU × CPU; contador de FPS do launcher no Renut (hoje mostra "--"); depois o RP5
+  (perfil SD 480+); checar efeitos (aura, raios, explosões).

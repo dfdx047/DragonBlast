@@ -386,6 +386,18 @@ class MenuModel(
                 update { it.copy(renderHeight = heights[i]) }
                 if (renut) host.setCvar("sa2_render_height_handheld", heights[i].toString())
             },
+        ).let { items ->
+            if (!renut) items else items + listOf(
+                MToggle(s(R.string.fx_bloom), s(R.string.fx_bloom_short), st.fxBloom) { v ->
+                    update { it.copy(fxBloom = v) }
+                    host.setCvar("swordman_renut_skip_ps", org.rb2recomp.android.LaunchConfig.renutSkipList(v, settings.fxShadows))
+                },
+                MToggle(s(R.string.fx_shadows), s(R.string.fx_shadows_short), st.fxShadows) { v ->
+                    update { it.copy(fxShadows = v) }
+                    host.setCvar("swordman_renut_skip_ps", org.rb2recomp.android.LaunchConfig.renutSkipList(settings.fxBloom, v))
+                },
+            )
+        } + listOf(
             MToggle(s(R.string.gfx_show_fps), s(R.string.gfx_show_fps_short), st.showFps, reopen = true) { v ->
                 update { it.copy(showFps = v) }
             },

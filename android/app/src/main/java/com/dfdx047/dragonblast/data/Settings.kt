@@ -45,6 +45,9 @@ data class Settings(
     val renderer: Renderer = Renderer.RENUT,
     val aspect: AspectMode = AspectMode.ORIGINAL,
     val showFps: Boolean = false,
+    // Renut effects (pixel shaders skipped: LaunchConfig.renutSkipList)
+    val fxBloom: Boolean = true,
+    val fxShadows: Boolean = true,
     val pauseInBackground: Boolean = true,
     val stereoAudio: Boolean = true,
     // Controls
@@ -89,6 +92,8 @@ class SettingsStore(context: Context) {
             renderer = e("renderer", Renderer.entries.toTypedArray(), d.renderer) { it.key },
             aspect = e("aspect", AspectMode.entries.toTypedArray(), d.aspect) { it.key },
             showFps = prefs.getBoolean("show_fps", false),
+            fxBloom = prefs.getBoolean("fx_bloom", true),
+            fxShadows = prefs.getBoolean("fx_shadows", true),
             pauseInBackground = prefs.getBoolean("pause_background", true),
             stereoAudio = prefs.getBoolean("audio_stereo", true),
             touchMode = e("touch_mode", TouchMode.entries.toTypedArray(), d.touchMode) { it.key },
@@ -120,6 +125,8 @@ class SettingsStore(context: Context) {
             .putString("renderer", s.renderer.key)
             .putString("aspect", s.aspect.key)
             .putBoolean("show_fps", s.showFps)
+            .putBoolean("fx_bloom", s.fxBloom)
+            .putBoolean("fx_shadows", s.fxShadows)
             .putBoolean("pause_background", s.pauseInBackground)
             .putBoolean("audio_stereo", s.stereoAudio)
             .putString("touch_mode", s.touchMode.key)
@@ -201,4 +208,13 @@ fun TouchPreset.tuning(): PresetTuning = when (this) {
     TouchPreset.NORMAL -> PresetTuning(1.10f, 70, StickMode.DYNAMIC, swipe = false, holdToCharge = false)
     // Relaxed: fixed stick, large buttons, charge and guard as toggles.
     TouchPreset.CASUAL -> PresetTuning(1.20f, 78, StickMode.FIXED, swipe = false, holdToCharge = true)
+}
+
+/** Effect presets: only the game's effects (resolution is its own setting). */
+enum class FxPreset(val bloom: Boolean, val shadows: Boolean) {
+    LIGHT(false, false), BALANCED(true, false), QUALITY(true, true);
+
+    companion object {
+        fun of(s: Settings): FxPreset? = entries.firstOrNull { it.bloom == s.fxBloom && it.shadows == s.fxShadows }
+    }
 }

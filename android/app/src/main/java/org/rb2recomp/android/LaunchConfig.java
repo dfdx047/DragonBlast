@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  *   perf/    per-frame timing CSV
  *   args.txt optional, one setting per line (e.g. --vsync=false); overrides the defaults below
  */
-final class LaunchConfig {
+public final class LaunchConfig {
     private LaunchConfig() {}
 
     static File root(Context context) {
@@ -115,6 +115,18 @@ final class LaunchConfig {
             if (Math.abs(c - h) < Math.abs(best - h)) best = c;
         }
         return best;
+    }
+
+    /**
+     * Raging Blast 2's effects the Renut leaves out (launcher Graphics, Effects): their pixel shaders' hashes for
+     * swordman_renut_skip_ps (renut/0204, live). Bloom: the 320x180 blur and its sum onto the scene (the downsample's
+     * shader also restores the scene, so it stays). Shadows: the characters' shadows laid on the scene.
+     */
+    public static String renutSkipList(boolean bloom, boolean shadows) {
+        StringBuilder out = new StringBuilder();
+        if (!bloom) out.append("4DC55DC2954A3B88,90C56B1D9F182A4E");
+        if (!shadows) out.append(out.length() > 0 ? "," : "").append("F5C3A164E6D6FAB5");
+        return out.toString();
     }
 
     /** "1920x1080" for a render height (16:9). */
@@ -366,7 +378,16 @@ final class LaunchConfig {
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9"));
         defaults.add("--present_letterbox=" + !stretch);
         // The Renut's scan-out has its own (renut_engine/gpu/backend/present.cpp FitFrame).
-        if (renut) defaults.add("--swordman_aspect=" + (stretch ? "stretch" : "original"));
+        if (renut) {
+            defaults.add("--swordman_aspect=" + (stretch ? "stretch" : "original"));
+            // Host mip levels of a resolve only when a draw reads it smaller (the bloom): RB2 copies its scene three
+            // times a frame to restore it, read at full size; making their levels cost 3.5 ms a frame at 1080p on a
+            // Mali-G615, lazily 1 ms.
+            defaults.add("--swordman_renut_resolve_mips_lazy=true");
+            android.content.SharedPreferences o = context.getSharedPreferences("options", Context.MODE_PRIVATE);
+            String skip = renutSkipList(o.getBoolean("fx_bloom", true), o.getBoolean("fx_shadows", true));
+            if (!skip.isEmpty()) defaults.add("--swordman_renut_skip_ps=" + skip);
+        }
         // Internal resolution; the presenter scales it to the screen. The Renut draws at a height (360p to 4K, its
         // glue's sa2_render_height_handheld) over the game's own 1280x720; Xenia at a percent of 720p
         // (src/rb2_resolution.h, 50-100).
