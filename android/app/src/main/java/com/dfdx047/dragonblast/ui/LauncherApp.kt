@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -147,6 +148,32 @@ fun LauncherApp(vm: LauncherViewModel) {
 
     if (vm.showNoEngine) {
         InfoDialog(stringResource(R.string.no_engine_title), stringResource(R.string.no_engine_text)) { vm.showNoEngine = false }
+    }
+    vm.update?.let { r ->
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { vm.update = null },
+            containerColor = com.dfdx047.dragonblast.ui.theme.DbColors.SlateHigh,
+            title = { androidx.compose.material3.Text(stringResource(R.string.update_title, r.version)) },
+            text = {
+                androidx.compose.material3.Text(
+                    r.notes.ifBlank { stringResource(R.string.update_no_notes) },
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = com.dfdx047.dragonblast.ui.theme.DbColors.TextDim,
+                    modifier = Modifier.heightIn(max = 320.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { vm.installUpdate(context, r) }) {
+                    androidx.compose.material3.Text(stringResource(R.string.update_install), color = com.dfdx047.dragonblast.ui.theme.DbColors.Ember)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { vm.update = null }) {
+                    androidx.compose.material3.Text(stringResource(R.string.update_later))
+                }
+            },
+        )
     }
 }
 

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Gavel
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,7 @@ import com.dfdx047.dragonblast.ui.components.Divider
 import com.dfdx047.dragonblast.ui.components.InfoDialog
 import com.dfdx047.dragonblast.ui.components.Logo
 import com.dfdx047.dragonblast.ui.components.SectionCard
+import com.dfdx047.dragonblast.ui.components.SettingSwitch
 import com.dfdx047.dragonblast.ui.components.help
 import com.dfdx047.dragonblast.ui.theme.DbColors
 
@@ -81,6 +83,8 @@ fun AboutScreen(vm: LauncherViewModel) {
                 Credit("moddedrounds — RB2-Android", R.string.credit_android, DragonBlastApp.UPSTREAM_URL),
                 Credit("Project8Recomp", R.string.credit_p8, "https://github.com/theokyr/Project8Recomp"),
                 Credit("ReXGlue SDK", R.string.credit_rexglue, "https://github.com/rexglue/rexglue-sdk"),
+                Credit("Renut · reNut (masterspike52) · mgr-nx-deko (tuancapoo)", R.string.credit_renut, "https://github.com/tuancapoo/mgr-nx-deko"),
+                Credit("AMD FidelityFX (FSR 1, CAS)", R.string.credit_fidelityfx, "https://github.com/GPUOpen-Effects/FidelityFX-FSR"),
                 Credit("Xenia", R.string.credit_xenia, "https://github.com/xenia-project/xenia"),
                 Credit("SDL", R.string.credit_sdl, "https://libsdl.org"),
                 Credit("Mesa (Turnip, PanVK)", R.string.credit_mesa, "https://mesa3d.org"),
@@ -98,6 +102,39 @@ fun AboutScreen(vm: LauncherViewModel) {
                     Icon(Icons.Outlined.OpenInNew, null, tint = DbColors.TextFaint, modifier = Modifier.size(16.dp))
                 }
             }
+        }
+
+        SectionCard(stringResource(R.string.update_card), Icons.Outlined.SystemUpdate) {
+            Text(
+                when {
+                    vm.checkingUpdate -> stringResource(R.string.update_checking)
+                    vm.updateStatus == "" -> stringResource(R.string.update_current, BuildConfig.VERSION_NAME)
+                    vm.updateStatus != null -> stringResource(R.string.update_error, vm.updateStatus ?: "")
+                    else -> stringResource(R.string.about_version, BuildConfig.VERSION_NAME)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = DbColors.TextDim,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(R.string.update_check),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = DbColors.Ember,
+                    modifier = Modifier.clickable(enabled = !vm.checkingUpdate) { vm.checkUpdate() }.padding(vertical = 6.dp),
+                )
+                Text(
+                    stringResource(R.string.update_all_releases),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = DbColors.Steel,
+                    modifier = Modifier.clickable { open(com.dfdx047.dragonblast.data.Updater.RELEASES_URL) }.padding(vertical = 6.dp),
+                )
+            }
+            Divider()
+            SettingSwitch(
+                stringResource(R.string.update_auto),
+                help(R.string.update_auto_short),
+                vm.settings.autoUpdates,
+            ) { v -> vm.update { it.copy(autoUpdates = v) } }
         }
 
         SectionCard(stringResource(R.string.about_app), Icons.Outlined.Language) {

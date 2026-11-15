@@ -30,8 +30,10 @@ android {
         applicationId = "com.dfdx047.dragonblast"
         minSdk = 29      // memfd / ASharedMemory and a linker with the namespaces the SDK needs
         targetSdk = 35
-        versionCode = (findProperty("app.versionCode") as String?)?.toInt() ?: 1
-        versionName = (findProperty("app.versionName") as String?) ?: "0.1.0"
+        // android/version.properties (one place for releases); -Papp.versionCode / -Papp.versionName override it.
+        val ver = Properties().apply { rootProject.file("version.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
+        versionCode = ((findProperty("app.versionCode") as String?) ?: ver.getProperty("versionCode") ?: "1").toInt()
+        versionName = (findProperty("app.versionName") as String?) ?: ver.getProperty("versionName") ?: "0.1.0"
         ndk { abiFilters += "arm64-v8a" }
         buildConfigField("boolean", "UI_ONLY", uiOnly.toString())
         // Only the three languages the launcher is translated to.
@@ -64,6 +66,11 @@ android {
     (project.findProperty("rb2.jniLibs") as String?)?.let { dir ->
         sourceSets.getByName("main").jniLibs.setSrcDirs(listOf(dir))
     }
+    // The encrypted game (libgame.zdat / libgame_v80.zdat + json, tools/android/pack_libgame.py), staged by
+    // tools/android/build_apk.sh outside the source tree.
+    (project.findProperty("rb2.gameAssets") as String?)?.let { dir ->
+        sourceSets.getByName("main").assets.srcDir(dir)
+    }
 
     packaging {
         jniLibs {
@@ -72,8 +79,11 @@ android {
         }
     }
 
+    // The .so files are compressed in the APK (a smaller download): the native ones are extracted at install
+    // (useLegacyPackaging) and the Turnip drivers in assets are copied out once per installed APK (GameActivity).
+    // The encrypted game does not compress: stored as is.
     androidResources {
-        noCompress += listOf("so")
+        noCompress += listOf("zdat")
     }
 
     sourceSets {

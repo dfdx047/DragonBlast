@@ -4,9 +4,15 @@
 # jniLibs. Builds:
 #
 #   librb2probe.so   standalone Vulkan capability probe (no SDK, no game)
+#   libxeximage.so     the default.xex PE image reader (the launcher derives the libgame key with it)
 #   librexruntime.so   the patched ReXGlue SDK runtime (SDL3 is linked statically inside it)
 #   librexgpu-xenos.so Xbox 360 GPU -> Vulkan plugin (dlopen'd by the runtime)
-#   libmain.so         the recompiled game + the app layer (this directory) + the title's hooks
+#   libgame.so         the recompiled game + the app layer (this directory) + the title's hooks + the Renut. Game
+#                      data: build_native.sh encrypts it (tools/android/pack_libgame.py) and the APK only carries
+#                      assets/libgame.zdat; the launcher decrypts it with the player's default.xex.
+#
+# Universal APK: the Armv8.0 set (THPS_MARCH=armv8-a) names its runtime and GPU plugin with THPS_LIB_SUFFIX
+# ("_v80"), so both sets fit in one lib/arm64-v8a; the launcher picks one by the CPU's HWCAP (CpuSet.kt).
 #
 # The game libraries need the SDK tree (tools/android/prepare_sdk.sh) and the generated sources
 # (tools/android/codegen.sh). Without generated sources only the probe is built.
@@ -23,6 +29,7 @@ set(THPS_RECOMP_JOBS "6" CACHE STRING "Generated files compiled in parallel")
 # Inline (LSE) atomics instead of load/store-exclusive loops. The Thor's Snapdragon 8 Gen 2 cores
 # are all Armv9, so Armv8.2 is safe; guest code does atomics constantly.
 set(THPS_MARCH "armv8.2-a" CACHE STRING "-march for the generated game code")
+set(THPS_LIB_SUFFIX "" CACHE STRING "Suffix of this set's runtime and GPU plugin (\"_v80\" for Armv8.0)")
 
 # ---------------------------------------------------------------------------------------------
 # Vulkan probe: always built, depends on nothing but the NDK.
@@ -30,6 +37,18 @@ set(THPS_MARCH "armv8.2-a" CACHE STRING "-march for the generated game code")
 add_library(rb2probe SHARED src/vulkan_probe.cpp)
 target_link_libraries(rb2probe PRIVATE vulkan log)
 set_target_properties(rb2probe PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+
+# default.xex PE image reader for the launcher (key of the encrypted libgame): the SDK's lzxd and AES sources only.
+set(THPS_SDK_THIRD "${THPS_SDK}/thirdparty")
+if(EXISTS "${THPS_SDK_THIRD}/libmspack/cabextract/mspack/lzxd.c")
+    add_library(xeximage SHARED src/loader/xex_image.cpp src/loader/xex_image_jni.cpp
+        "${THPS_SDK_THIRD}/libmspack/cabextract/mspack/lzxd.c")
+    target_include_directories(xeximage PRIVATE src/loader "${THPS_SDK_THIRD}"
+        "${THPS_SDK_THIRD}/libmspack/cabextract/mspack")
+    target_compile_options(xeximage PRIVATE -w)
+    target_link_libraries(xeximage PRIVATE log)
+    set_target_properties(xeximage PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+endif()
 
 if(NOT EXISTS "${THPS_GEN_DIR}/sources.cmake")
     message(WARNING "No generated game code in ${THPS_GEN_DIR}; building the Vulkan probe only.")
@@ -57,10 +76,19 @@ string(APPEND CMAKE_C_FLAGS " -march=${THPS_MARCH}")
 string(APPEND CMAKE_CXX_FLAGS " -march=${THPS_MARCH}")
 
 add_subdirectory("${THPS_SDK}" rexglue-sdk)
+# The runtime loads the GPU plugin of its own set (SDK patch 0046). Only on that target: a global definition would
+# change every target's flags, the generated game code included.
+if(THPS_LIB_SUFFIX)
+    target_compile_definitions(rexruntime PRIVATE REX_GPU_PLUGIN_SUFFIX="${THPS_LIB_SUFFIX}")
+endif()
+if(THPS_LIB_SUFFIX)
+    set_target_properties(rexruntime PROPERTIES OUTPUT_NAME "rexruntime${THPS_LIB_SUFFIX}")
+    set_target_properties(rexgpu-xenos PROPERTIES OUTPUT_NAME "rexgpu-xenos${THPS_LIB_SUFFIX}")
+endif()
 
 # Headers the app and generated code need beyond rex::runtime (rex_app.h pulls in imgui, the Vulkan
 # stack, ...). Take include paths only: never link rexui/rexcore here, they are OBJECT libraries and
-# linking them would duplicate their global state (the cvar registry) inside libmain.so.
+# linking them would duplicate their global state (the cvar registry) inside libgame.so.
 add_library(thps_headers INTERFACE)
 target_include_directories(thps_headers INTERFACE
     $<TARGET_PROPERTY:imgui,INTERFACE_INCLUDE_DIRECTORIES>)
@@ -69,7 +97,7 @@ target_link_libraries(thps_headers INTERFACE
 
 # ---------------------------------------------------------------------------------------------
 # The recompiled game (generated). An OBJECT library, like the desktop build: every translation
-# unit is linked into libmain.so, including the weak aliases the title's hooks override.
+# unit is linked into libgame.so, including the weak aliases the title's hooks override.
 # ---------------------------------------------------------------------------------------------
 include("${THPS_GEN_DIR}/sources.cmake")   # defines GENERATED_SOURCES
 add_library(rb2_recomp_objs OBJECT ${GENERATED_SOURCES})
@@ -83,7 +111,7 @@ set_property(GLOBAL APPEND PROPERTY JOB_POOLS recomp=${THPS_RECOMP_JOBS})
 set_target_properties(rb2_recomp_objs PROPERTIES JOB_POOL_COMPILE recomp)
 
 # ---------------------------------------------------------------------------------------------
-# libmain.so: SDL_main entry, the title's app class (src/game/src, unchanged) and the hooks.
+# libgame.so (target "main"): SDL_main entry, the title's app class (src/game/src, unchanged) and the hooks.
 # ---------------------------------------------------------------------------------------------
 add_library(main SHARED
     src/android_main.cpp
@@ -103,6 +131,7 @@ target_include_directories(main PRIVATE
     "${THPS_SDK}/include"
     "${THPS_SDK}/src/ui")
 target_link_libraries(main PRIVATE rex::runtime thps_headers android log)
+set_target_properties(main PROPERTIES OUTPUT_NAME game)
 target_compile_definitions(main PRIVATE REXGLUE_BUILD_CONFIG="$<CONFIG>")
 target_compile_options(main PRIVATE -march=${THPS_MARCH})
 # Optional custom Vulkan driver loader (libadrenotools, BSD-2-Clause; fetched by

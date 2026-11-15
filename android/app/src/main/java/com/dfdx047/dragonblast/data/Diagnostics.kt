@@ -19,7 +19,10 @@ object Engine {
     fun available(context: Context): Boolean {
         if (BuildConfig.UI_ONLY) return false
         val dir = context.applicationInfo.nativeLibraryDir ?: return false
-        return File(dir, "libmain.so").isFile
+        // This CPU's runtime (librexruntime*.so or librexruntime_v80*.so) and its encrypted game (GameLib).
+        val runtime = File(dir).list()?.any { it.startsWith("librexruntime" + CpuSet.suffix) &&
+            (CpuSet.suffix.isNotEmpty() || !it.contains("_v80")) } ?: false
+        return runtime && GameLib.inApk(context)
     }
 }
 

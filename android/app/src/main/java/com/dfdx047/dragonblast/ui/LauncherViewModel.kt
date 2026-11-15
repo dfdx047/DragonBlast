@@ -14,6 +14,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dfdx047.dragonblast.DragonBlastApp
 import com.dfdx047.dragonblast.R
+import com.dfdx047.dragonblast.data.GameLib
+import com.dfdx047.dragonblast.data.Updater
+import com.dfdx047.dragonblast.data.GameLibException
 import com.dfdx047.dragonblast.data.AppPaths
 import com.dfdx047.dragonblast.data.Diagnostics
 import com.dfdx047.dragonblast.data.Engine
@@ -60,6 +63,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     var importError by mutableStateOf<String?>(null)
         private set
     var showNoEngine by mutableStateOf(false)
+    /** A newer release found by the updater (dialog on screen while set). */
+    var update by mutableStateOf<Updater.Release?>(null)
+    /** Last check's result for the About card: null (none yet), "" up to date, or an error. */
+    var updateStatus by mutableStateOf<String?>(null)
+    var checkingUpdate by mutableStateOf(false)
     /** Bumps when the game gets installed, so Home can play the "ready" transition once. */
     var installedPulse by mutableStateOf(0)
         private set
@@ -78,6 +86,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         refresh()
+        if (settings.autoUpdates && Updater.autoCheckDue(app)) checkUpdate(manual = false)
         viewModelScope.launch(Dispatchers.IO) {
             val g = GpuInfo.get(app)
             withContext(Dispatchers.Main) { gpu = g }
@@ -199,6 +208,105 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (!st.playable) return
+        val ctx = getApplication<Application>()
+        if (GameLib.ready(ctx)) {
+            startGame(context)
+            return
+        }
+        // First start, or an update brought another game build: decrypt it with the player's default.xex (GameLib).
+        if (busy != null) return
+        importError = null
+        busy = Busy(R.string.busy_unpack)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                var last = 0L
+                GameLib.install(ctx) { done, total ->
+                    val now = System.currentTimeMillis()
+                    if (now - last > 120) {
+                        last = now
+                        busy = Busy(R.string.busy_unpack, "", if (total > 0) done.toFloat() / total else null)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    busy = null
+                    startGame(context)
+                }
+            } catch (e: GameLibException) {
+                withContext(Dispatchers.Main) {
+                    busy = null
+                    importError = when (e.reason) {
+                        GameLibException.Reason.UNSUPPORTED_VERSION -> ctx.getString(R.string.unpack_err_version, e.detail)
+                        GameLibException.Reason.NO_XEX -> ctx.getString(R.string.iso_err_no_xex)
+                        GameLibException.Reason.NO_ENGINE -> ctx.getString(R.string.unpack_err_engine)
+                        GameLibException.Reason.IO -> ctx.getString(R.string.iso_err_io, e.detail)
+                    }
+                    message = UiMessage(R.string.msg_unpack_failed)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    busy = null
+                    importError = ctx.getString(R.string.iso_err_io, e.message ?: e.javaClass.simpleName)
+                    message = UiMessage(R.string.msg_unpack_failed)
+                }
+            }
+        }
+    }
+
+    // ---- updates ----
+
+    fun checkUpdate(manual: Boolean = true) {
+        if (checkingUpdate) return
+        checkingUpdate = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val r = runCatching { Updater.check() }
+            withContext(Dispatchers.Main) {
+                checkingUpdate = false
+                r.onSuccess { rel ->
+                    updateStatus = ""
+                    if (rel != null) update = rel else if (manual) message = UiMessage(R.string.msg_update_none)
+                }.onFailure { e ->
+                    updateStatus = e.message ?: e.javaClass.simpleName
+                    if (manual) message = UiMessage(R.string.msg_update_failed)
+                }
+            }
+        }
+    }
+
+    fun installUpdate(context: Context, r: Updater.Release) {
+        if (busy != null) return
+        if (!Updater.canInstall(context)) {
+            message = UiMessage(R.string.msg_update_permission)
+            Updater.openInstallPermission(context)
+            return
+        }
+        update = null
+        busy = Busy(R.string.busy_update, r.version)
+        val ctx = getApplication<Application>()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                var last = 0L
+                val apk = Updater.download(ctx, r) { done, total ->
+                    val now = System.currentTimeMillis()
+                    if (now - last > 120) {
+                        last = now
+                        busy = Busy(R.string.busy_update, r.version, if (total > 0) done.toFloat() / total else null)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    busy = null
+                    Updater.install(context, apk)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    busy = null
+                    updateStatus = e.message ?: e.javaClass.simpleName
+                    message = UiMessage(R.string.msg_update_failed)
+                }
+            }
+        }
+    }
+
+    private fun startGame(context: Context) {
         val intent = Intent().setClassName(context, "org.rb2recomp.android.GameActivity")
         context.startActivity(intent)
     }

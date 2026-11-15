@@ -109,8 +109,9 @@ Falta:
 Snapdragon 665 (4× A73 2,0 GHz + 4× A53), Adreno 610, Armv8.0 sem LSE, 3,6 GB, tela 1560×720 a 60 Hz, LineageOS.
 - Motor Armv8.0 (`THPS_MARCH=armv8-a`, SDK 0045): o LSE só fica nos helpers `__aarch64_*`, que escolhem em execução.
 - Driver do sistema (Qualcomm V@502, Vulkan 1.1) não tem descriptor indexing: o Renut fecha. Com Turnip funciona:
-  o APK agora leva o Turnip (`tools/android/fetch_turnip.sh` → `assets/drivers`, +31 MB) e o modo Automático o
-  usa sozinho no Adreno 6xx (`Custom Vulkan driver … turnip … loaded`). Renut remapeia os atributos de vértice para
+  desde a 0.3.0 o APK de release não leva o Turnip (o jogador baixa um na aba Drivers; Purple T30 é o mais rápido no
+  Adreno 610). `tools/android/fetch_turnip.sh` ainda o embute em builds pessoais, e aí o Automático o usa sozinho no
+  Adreno 6xx (`Custom Vulkan driver … turnip … loaded`); sem ele o Automático fica no driver do aparelho. Renut remapeia os atributos de vértice para
   caber em 16 (renut/0209); a cola entrega o loader do Turnip ao Renut (`REX_VULKAN_LOADER_HANDLE`).
 - Luta CPU × CPU, Renut, Turnip R8 (frio → quente): 360p bilinear 54–59 FPS → ~40 depois de ~3 min (CPU 77–86 °C,
   GPU 950 → 745 MHz); 360p CAS 48; 480p 43; 540p 39–41; 720p 25. GPU a 360p: R8 e T27 18,5 ms, Purple T30 12,5 ms.

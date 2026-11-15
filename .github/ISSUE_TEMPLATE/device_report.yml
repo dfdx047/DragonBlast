@@ -14,7 +14,7 @@ body:
     id: launcher
     attributes:
       label: Launcher info
-      description: Copy the "GPU", "Graphics driver" and "Vulkan probe" lines from the launcher's info panel.
+      description: In the app, More → Debug → Export logs, and attach the zip (it has the device, GPU and driver details).
     validations: {required: true}
   - type: dropdown
     id: result

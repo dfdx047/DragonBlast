@@ -15,6 +15,7 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 |---|---|---|---|
 | Poco X6 Pro | `4LPF6HMFEYPZCEJB` | Mali-G615 MC6 (Dimensity 8300) | aparelho de teste deste projeto (2026-11-13) |
 | Xiaomi Mi A3 | `37b2869d7607` (USB) | Adreno 610 (Snapdragon 665, Armv8.0) | aparelho fraco de teste (2026-11-14); Renut só com Turnip |
+| Anbernic RG Cube | `192.168.1.184:5555` | Mali-G57 (Unisoc T820), tela 720×720 | liberado 2026-11-15; nunca mudar o modo de energia/desempenho |
 
 - Sempre `adb -s <serial>`. Outros aparelhos só com pedido do desenvolvedor.
 - Antes de cada toque ou captura, conferir que o Dragon Blast está em primeiro plano (`build/lab/guard.sh`): o
@@ -41,7 +42,7 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 - Só a launcher (sem o SDK ao lado do repositório o build entra sozinho nesse modo):
   `cd android && ./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - Jogo completo (tudo dentro de `build/`, com `TMPDIR=build/tmp`):
-  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0045).
+  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0046).
      Precisa do `spirv-cross`: sem pacote no sistema, ele foi compilado em `build/third_party/spirv-cross-build`
      (tag vulkan-sdk-1.4.304.0) e o script o encontra sozinho.
   2. `tools/android/build_host_cli.sh` (recompilador `rexglue` para o PC).
@@ -53,21 +54,29 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
      data/X360/st_pack_boot_pt_x360.afs data/X360/st_pack_battle_map_pt_x360.afs`; `tools/renut/shaders.sh`
      (DXC e XenosRecomp em `build/renut/host`, shaders em `build/renut/out`). Mudança no Renut = patch novo em
      `patches/renut` (o CMake recusa a árvore com alterações à mão).
-  5. `tools/android/build_native.sh` (NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema) e `build_apk.sh`.
-     Ou tudo de uma vez: `RB2_GAME=build/game tools/android/rebuild.sh <tag>` → `build/apk/`.
-  - Motor Armv8.0 (celulares sem LSE, ex.: Snapdragon 665 do Mi A3): `THPS_MARCH=armv8-a tools/android/build_native.sh`
-    (pasta própria `android/native-build/RelWithDebInfo-armv8-a`, libs em `android/native-build/jniLibs-armv8-a`) e
-    `JNILIBS=android/native-build/jniLibs-armv8-a tools/android/build_apk.sh`. Os dois APKs saem do mesmo
-    `app-release.apk`: copiar cada um para `build/apk/dragonblast-armv8.{0,2}.apk` antes de gerar o outro.
+  5. `tools/android/build_native.sh` (Armv8.2) e `THPS_MARCH=armv8-a tools/android/build_native.sh` (Armv8.0, libs
+     com sufixo `_v80`), depois `tools/android/build_apk.sh`: sem `JNILIBS` ele monta o **APK universal** com os dois
+     conjuntos (`android/native-build/universal`). NDK 28.2; sem o CMake 3.31.6 do SDK usa o do sistema.
+  6. `python3 tools/check_clean.py` tem de dar `CLEAN` antes de publicar (APK, repositório e histórico).
+  - libgame cifrado: `build_native.sh` tira os símbolos e empacota `libgame.so` em `assets/libgame{,_v80}.zdat`
+    (AES-256-GCM, chave = SHA-256 da imagem PE do `default.xex`; `tools/android/pack_libgame.py`). No aparelho o
+    launcher decifra no primeiro Jogar (`GameLib.kt`, `CpuSet.kt`; `libxeximage.so`). Teste do motor v8.0 num
+    aparelho v8.2: arquivo vazio `files/force_armv80`.
+  - Release: chave `android/dragonblast-release.jks` + `android/keystore.properties` (fora do git, backup com o
+    desenvolvedor); `android/version.properties` (subir versionCode e versionName a cada release). Asset da release
+    com nome fixo `DragonBlast.apk` e tag `vX.Y.Z`: o atualizador (`data/Updater.kt`) lê `releases/latest`.
+  - O APK de release não leva Turnip (pedido do desenvolvedor, 2026-11-15); `tools/android/fetch_turnip.sh` só para
+    builds pessoais. Guia público de build: `docs/BUILDING.md`.
   - `default.xex` suportado: 7 151 616 bytes, SHA-256 `d0291e64…e989c` (USA Rev 1).
 - Instalar no Poco: `adb -s 4LPF6HMFEYPZCEJB install -r <apk>` ("Instalar via USB" ligado no HyperOS). No Mi A3
   (`37b2869d7607`) só o APK Armv8.0.
 
 ## Licença
-- BSD-3-Clause do RB2 (`LICENSE`). Arquivos do jogo e código recompilado nunca no git nem num APK distribuído.
+- BSD-3-Clause do RB2 (`LICENSE`). Arquivos do jogo e código recompilado nunca no git, nem em claro num APK
+  distribuído (só o libgame cifrado). Repositório público a partir da 0.3.0.
 - O Renut (`patches/renut`, `android/native/src/renut`, `tools/renut`) é GPL-3.0 (`LICENSE-GPL-3.0`) e mantém os
-  créditos (README). Os shaders traduzidos (`build/renut/out/shader_cache.cpp`) são dados do jogo: só em builds pessoais
-  até o libgame cifrado (Optxbox `RENUT_DBZ.md`).
+  créditos (README). Os shaders traduzidos (`build/renut/out/shader_cache.cpp`) são dados do jogo: só dentro do libgame cifrado
+  (Optxbox `RENUT_DBZ.md`).
 
 ## Estado
 Ver `docs/ROADMAP.md`.

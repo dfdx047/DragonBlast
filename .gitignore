@@ -35,3 +35,4 @@ nxeart
 /android/keystore.properties
 *.keystore
 *.jks
+__pycache__/

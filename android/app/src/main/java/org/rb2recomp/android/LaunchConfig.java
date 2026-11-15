@@ -105,13 +105,16 @@ public final class LaunchConfig {
     }
 
     /**
-     * Weak phones (Adreno below 630, or an Armv8.0 CPU without LSE atomics such as the Snapdragon 665 of the Mi A3):
-     * they start at 360p with the bloom and the characters' shadows off until the player picks otherwise. Mi A3, Renut,
-     * CPU vs CPU fight: 55-59 FPS cold at 360p, 44 at 480p, 26 at 720p; ~40 once warm.
+     * Weak phones (Adreno below 630, an entry Mali (G51/G52/G57, the old G71/G72), or an Armv8.0 CPU without LSE
+     * atomics such as the Snapdragon 665 of the Mi A3): they start at 360p with the bloom and the characters' shadows
+     * off until the player picks otherwise. Renut, CPU vs CPU fight: Mi A3 55-59 FPS cold at 360p, 44 at 480p, 26 at
+     * 720p, ~40 once warm; RG Cube (Mali-G57 MC4) 53 at 360p Light, 45 at 480p, 40 at 720p.
      */
     public static boolean weakDevice(Context context) {
-        Matcher m = Pattern.compile("Adreno \\(TM\\) (\\d{3})").matcher(gpuName(context));
+        String gpu = gpuName(context);
+        Matcher m = Pattern.compile("Adreno \\(TM\\) (\\d{3})").matcher(gpu);
         if (m.find() && Integer.parseInt(m.group(1)) < 630) return true;
+        if (Pattern.compile("Mali-G(5\\d|7[12])\\b").matcher(gpu).find()) return true;
         try (BufferedReader r = new BufferedReader(new FileReader("/proc/cpuinfo"))) {
             for (String line; (line = r.readLine()) != null; ) {
                 if (line.startsWith("Features")) return !line.contains(" atomics");
@@ -322,9 +325,19 @@ public final class LaunchConfig {
 
     static int autoDriver(Context context) {
         int generation = adrenoGeneration(context);
-        if (generation == 6 || generation == 7) return DRIVER_TURNIP;
-        if (generation == 8) return AUTO_8XX;
+        if ((generation == 6 || generation == 7) && bundled(context, "turnip")) return DRIVER_TURNIP;
+        if (generation == 8 && bundled(context, "turnip8")) return AUTO_8XX;
         return DRIVER_SYSTEM;
+    }
+
+    /** Driver folder shipped in this APK (assets/drivers; release APKs carry none: tools/android/fetch_turnip.sh). */
+    static boolean bundled(Context context, String folder) {
+        try {
+            String[] files = context.getAssets().list("drivers/" + folder);
+            return files != null && files.length > 0;
+        } catch (java.io.IOException e) {
+            return false;
+        }
     }
 
     static int effectiveDriver(Context context) {

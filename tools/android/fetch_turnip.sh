@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Fetch the Mesa Turnip Vulkan drivers the app bundles: assets/drivers/turnip/vulkan.ad07xx.so
-# (Adreno 6xx / 7xx) and assets/drivers/turnip8/libvulkan_freedreno.so (Adreno 8xx, experimental).
+# Optional, personal builds only: release APKs do not carry Turnip (players download a driver in the
+# Drivers tab). Fetches the Mesa Turnip Vulkan drivers into assets/drivers/turnip/vulkan.ad07xx.so
+# (Adreno 6xx / 7xx) and assets/drivers/turnip8/libvulkan_freedreno.so (Adreno 8xx, experimental); with
+# them in the APK the Automatic driver uses them on those GPUs.
 # Source: github.com/K11MCH1/AdrenoToolsDrivers release v26.0.0-rc08 (Mesa 26.0.0-devel, MIT), pinned by
 # SHA-256. The binary is not committed; run this before tools/android/build_apk.sh. Without it the
 # app simply runs on the system driver.

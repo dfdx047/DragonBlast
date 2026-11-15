@@ -32,6 +32,15 @@ public class GameActivity extends SDLActivity {
      */
     @Override
     protected void onCreate(android.os.Bundle savedInstanceState) {
+        // The launcher decrypts the game before starting this window (GameLib); if it is not there (an update
+        // brought another one, or the window was restored on its own), go back to the launcher, which does it.
+        if (!com.dfdx047.dragonblast.data.GameLib.ready(this)) {
+            super.onCreate(savedInstanceState);   // loadLibraries() fails: SDL's broken-libraries path, no game thread
+            startActivity(new android.content.Intent(this, com.dfdx047.dragonblast.LauncherActivity.class)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            finish();
+            return;
+        }
         android.content.SharedPreferences opts = getSharedPreferences("options", MODE_PRIVATE);
         // SDL reads its hints from the environment too: keep running in the background when the
         // player turned "pause in background" off (set before SDL loads).
@@ -56,6 +65,22 @@ public class GameActivity extends SDLActivity {
             // Drivers bundled in the APK (assets/drivers/<name>/<file>).
             android.content.res.AssetManager assets = getAssets();
             String[] bundled = assets.list("drivers");
+            // Copies left by an earlier APK that bundled a driver this one does not carry.
+            for (String old : new String[] {"turnip", "turnip8"}) {
+                if (!LaunchConfig.bundled(this, old)) {
+                    java.io.File dir = new java.io.File(getFilesDir(), "drivers/" + old);
+                    java.io.File[] left = dir.listFiles();
+                    if (left != null) {
+                        for (java.io.File f : left) {
+                            //noinspection ResultOfMethodCallIgnored
+                            f.delete();
+                        }
+                        //noinspection ResultOfMethodCallIgnored
+                        dir.delete();
+                        android.util.Log.i("rb2", "removed driver copy no longer in the APK: " + dir);
+                    }
+                }
+            }
             if (bundled != null) {
                 for (String name : bundled) {
                     String[] files = assets.list("drivers/" + name);
@@ -65,18 +90,20 @@ public class GameActivity extends SDLActivity {
                     java.io.File dst = new java.io.File(getFilesDir(), "drivers/" + name);
                     //noinspection ResultOfMethodCallIgnored
                     dst.mkdirs();
+                    // The files are compressed in the APK (no length without reading them): copied once per
+                    // installed APK, stamped with its install time.
+                    String apkStamp = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime);
+                    java.io.File stampFile = new java.io.File(dst, ".apk_stamp");
+                    boolean fresh = false;
+                    try {
+                        fresh = apkStamp.equals(new String(java.nio.file.Files.readAllBytes(stampFile.toPath())));
+                    } catch (java.io.IOException ignored) {
+                    }
+                    if (fresh) {
+                        continue;
+                    }
                     for (String file : files) {
                         java.io.File out = new java.io.File(dst, file);
-                        long want;
-                        try (android.content.res.AssetFileDescriptor afd =
-                                     assets.openFd("drivers/" + name + "/" + file)) {
-                            want = afd.getLength();
-                        } catch (java.io.IOException compressed) {
-                            want = -1;  // stored compressed: no length without reading it
-                        }
-                        if (out.isFile() && want >= 0 && out.length() == want) {
-                            continue;
-                        }
                         try (java.io.InputStream in = assets.open("drivers/" + name + "/" + file);
                              java.io.OutputStream os = new java.io.FileOutputStream(out)) {
                             byte[] buf = new byte[1 << 16];
@@ -90,6 +117,7 @@ public class GameActivity extends SDLActivity {
                         //noinspection ResultOfMethodCallIgnored
                         new java.io.File(getFilesDir(), "drivers/.failed_" + name).delete();
                     }
+                    java.nio.file.Files.write(stampFile.toPath(), apkStamp.getBytes());
                 }
             }
         } catch (Throwable t) {
@@ -421,21 +449,41 @@ public class GameActivity extends SDLActivity {
 
     @Override
     protected String[] getLibraries() {
-        return new String[] {runtimeLibraryName(this), "main"};
+        return new String[] {runtimeLibraryName(this), "game"};
     }
 
     /**
-     * The SDK suffixes its library names with the build configuration ("rexruntimerd" for a
-     * RelWithDebInfo build, plain "rexruntime" for Release); use whichever was packaged.
+     * The runtime of this CPU's set (CpuSet: librexruntime*.so or, on Armv8.0, librexruntime_v80*.so), then the game
+     * the launcher decrypted into the private files folder (GameLib: it never ships in the clear).
+     */
+    @Override
+    public void loadLibraries() {
+        if (!com.dfdx047.dragonblast.data.GameLib.ready(this)) {
+            throw new UnsatisfiedLinkError("the game is not unpacked yet (the launcher does it)");
+        }
+        System.loadLibrary(runtimeLibraryName(this));
+        System.load(com.dfdx047.dragonblast.data.GameLib.file(this).getAbsolutePath());
+    }
+
+    @Override
+    protected String getMainSharedObject() {
+        return com.dfdx047.dragonblast.data.GameLib.file(this).getAbsolutePath();
+    }
+
+    /**
+     * The SDK suffixes its library names with the build configuration ("rexruntimerd" for a RelWithDebInfo build,
+     * plain "rexruntime" for Release); the Armv8.0 set adds "_v80" before it. Use whichever was packaged.
      */
     static String runtimeLibraryName(Context context) {
+        String set = com.dfdx047.dragonblast.data.CpuSet.getSuffix();
         java.io.File dir = new java.io.File(context.getApplicationInfo().nativeLibraryDir);
-        java.io.File[] found = dir.listFiles((d, name) -> name.startsWith("librexruntime") && name.endsWith(".so"));
+        java.io.File[] found = dir.listFiles((d, name) -> name.startsWith("librexruntime" + set) && name.endsWith(".so")
+                && (!set.isEmpty() || !name.contains("_v80")));
         if (found != null && found.length > 0) {
             String name = found[0].getName();
             return name.substring(3, name.length() - 3);   // strip "lib" and ".so"
         }
-        return "rexruntime";
+        return "rexruntime" + set;
     }
 
     @Override

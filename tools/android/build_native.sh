@@ -39,8 +39,10 @@ LIBS="$REPO/android/app/src/main/jniLibs/arm64-v8a"
 MARCH="${THPS_MARCH:-armv8.2-a}"
 TUNE=cortex-a715
 SUFFIX=""
+LIB_SUFFIX=""
 if [ "$MARCH" != armv8.2-a ]; then
   SUFFIX="-$MARCH"
+  LIB_SUFFIX=_v80   # the universal APK's Armv8.0 set: librexruntime_v80*.so, librexgpu-xenos_v80*.so, libgame_v80.zdat
   OUT="$OUT$SUFFIX"
   TUNE=cortex-a73
   LIBS="$REPO/android/native-build/jniLibs$SUFFIX/arm64-v8a"   # build_apk.sh JNILIBS=... packages it
@@ -51,7 +53,7 @@ DEFAULT_OPT="-O3 -mtune=$TUNE -g -DNDEBUG"
   -DCMAKE_MAKE_PROGRAM="$NINJA" \
   -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
   -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 -DANDROID_STL=c++_shared \
-  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DTHPS_MARCH="$MARCH" -DREXGLUE_ANDROID_MARCH="$MARCH" -DREXGLUE_OUT_SUFFIX="$SUFFIX" \
+  -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DTHPS_MARCH="$MARCH" -DREXGLUE_ANDROID_MARCH="$MARCH" -DREXGLUE_OUT_SUFFIX="$SUFFIX" -DTHPS_LIB_SUFFIX="$LIB_SUFFIX" \
   -DCMAKE_C_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:-$DEFAULT_OPT}" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${OPT_FLAGS:-$DEFAULT_OPT}" "${EXTRA[@]}"
 "$CMAKE" --build "$OUT" --parallel "$JOBS"
 
@@ -68,8 +70,17 @@ stage() { # glob
   echo "  staged $(basename "$f") ($(du -h "$f" | cut -f1))"
 }
 stage librb2probe.so
+LLVM_STRIP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 if [ "${PROBE_ONLY:-0}" != 1 ]; then
-  stage libmain.so
+  stage libxeximage.so
+  # The game itself never goes into jniLibs: it is encrypted with the default.xex's key into assets
+  # (tools/android/pack_libgame.py); the launcher decrypts it with the player's own disc.
+  ASSETS="$REPO/android/native-build/assets$SUFFIX"
+  rm -rf "$ASSETS"; mkdir -p "$ASSETS"
+  GAME_SO="$(find "$OUT" -name libgame.so -type f | head -1)"
+  [ -n "$GAME_SO" ] || { echo "missing build output: libgame.so"; exit 1; }
+  python3 "$REPO/tools/android/pack_libgame.py" "$GAME_SO" "$LLVM_STRIP" "${RB2_XEX:-$REPO/build/game/default.xex}" \
+    "$ASSETS" "libgame$LIB_SUFFIX"
   stage "librexruntime*.so"
   stage "librexgpu-xenos*.so"
   # libadrenotools hooks (custom Vulkan driver support); only present when it was fetched.
@@ -78,7 +89,8 @@ if [ "${PROBE_ONLY:-0}" != 1 ]; then
   done
 fi
 cp "$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so" "$LIBS/"
-if [ "${STRIP:-0}" = 1 ]; then
-  for so in "$LIBS"/*.so; do "$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-unneeded "$so"; done
+# Debug info stays in the build folder ($OUT) for symbolizing; the APK gets stripped libraries (STRIP=0 keeps it).
+if [ "${STRIP:-1}" = 1 ]; then
+  for so in "$LIBS"/*.so; do "$LLVM_STRIP" --strip-unneeded "$so"; done
 fi
 echo "[ok] native libraries staged in $LIBS"

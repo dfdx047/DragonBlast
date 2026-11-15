@@ -1,0 +1,32 @@
+diff --git a/src/system/gpu_plugin_loader.cpp b/src/system/gpu_plugin_loader.cpp
+index 754fa138..2c687f8a 100644
+--- a/src/system/gpu_plugin_loader.cpp
++++ b/src/system/gpu_plugin_loader.cpp
+@@ -22,6 +22,12 @@
+ #include <rex/platform.h>
+ #include <rex/platform/dynlib.h>
+ 
++// The app's own name suffix for this set of libraries (Dragon Blast's universal APK: "_v80" for the Armv8.0 runtime,
++// which loads librexgpu-xenos_v80*.so). Empty by default.
++#ifndef REX_GPU_PLUGIN_SUFFIX
++#define REX_GPU_PLUGIN_SUFFIX ""
++#endif
++
+ namespace rex::system {
+ 
+ namespace {
+@@ -37,11 +43,11 @@ std::string PluginFileName(std::string_view name) {
+     postfix = "rd";
+   }
+ #if REX_PLATFORM_WIN32
+-  return fmt::format("rexgpu-{}{}.dll", name, postfix);
++  return fmt::format("rexgpu-{}{}{}.dll", name, REX_GPU_PLUGIN_SUFFIX, postfix);
+ #elif REX_PLATFORM_MAC
+-  return fmt::format("librexgpu-{}{}.dylib", name, postfix);
++  return fmt::format("librexgpu-{}{}{}.dylib", name, REX_GPU_PLUGIN_SUFFIX, postfix);
+ #else
+-  return fmt::format("librexgpu-{}{}.so", name, postfix);
++  return fmt::format("librexgpu-{}{}{}.so", name, REX_GPU_PLUGIN_SUFFIX, postfix);
+ #endif
+ }
+ 

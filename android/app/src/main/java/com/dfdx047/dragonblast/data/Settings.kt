@@ -70,6 +70,8 @@ data class Settings(
     val extraArgs: String = "",
     // App
     val language: AppLanguage = AppLanguage.SYSTEM,
+    /** Look for a new release when the launcher opens (Updater, at most every 12 h). */
+    val autoUpdates: Boolean = true,
 )
 
 /**
@@ -97,6 +99,7 @@ class SettingsStore(context: Context) {
             fxBloom = prefs.getBoolean("fx_bloom", !weak),
             fxShadows = prefs.getBoolean("fx_shadows", !weak),
             pauseInBackground = prefs.getBoolean("pause_background", true),
+            autoUpdates = prefs.getBoolean("auto_updates", true),
             stereoAudio = prefs.getBoolean("audio_stereo", true),
             touchMode = e("touch_mode", TouchMode.entries.toTypedArray(), d.touchMode) { it.key },
             touchPreset = e("touch_preset", TouchPreset.entries.toTypedArray(), d.touchPreset) { it.key },
@@ -131,6 +134,7 @@ class SettingsStore(context: Context) {
             .putBoolean("fx_bloom", s.fxBloom)
             .putBoolean("fx_shadows", s.fxShadows)
             .putBoolean("pause_background", s.pauseInBackground)
+            .putBoolean("auto_updates", s.autoUpdates)
             .putBoolean("audio_stereo", s.stereoAudio)
             .putString("touch_mode", s.touchMode.key)
             .putString("touch_preset", s.touchPreset.key)
