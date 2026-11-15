@@ -17,6 +17,44 @@ enum class PadInput {
     RS_UP, RS_RIGHT, RS_DOWN, RS_LEFT,
 }
 
+/**
+ * Layout x (0..1) ↔ pixels. Layouts are drawn for a 16:9 screen; elsewhere each side keeps its distance from its own
+ * edge in units of the screen height, so on wider phones (20:9) the thumb clusters stay by the edges and on narrow or
+ * square screens (RG Cube) they keep their shape instead of being squeezed. The middle third stretches between them.
+ * On square screens the reference narrows (K) so the middle keeps some room.
+ */
+object ScreenMap {
+    private const val REF = 16f / 9f
+    private const val K = 0.85f
+    private const val EDGE = 0.35f
+
+    private fun ref(w: Float, h: Float) = minOf(h * REF, w / K)
+
+    fun toPx(x: Float, w: Float, h: Float): Float {
+        if (w <= 0f || h <= 0f) return x * w
+        val r = ref(w, h)
+        val a = EDGE * r
+        val b = w - EDGE * r
+        return when {
+            x <= EDGE -> x * r
+            x >= 1f - EDGE -> w - (1f - x) * r
+            else -> a + (b - a) * (x - EDGE) / (1f - 2 * EDGE)
+        }
+    }
+
+    fun fromPx(px: Float, w: Float, h: Float): Float {
+        if (w <= 0f || h <= 0f) return px / maxOf(w, 1f)
+        val r = ref(w, h)
+        val a = EDGE * r
+        val b = w - EDGE * r
+        return when {
+            px <= a -> px / r
+            px >= b -> 1f - (w - px) / r
+            else -> EDGE + (1f - 2 * EDGE) * (px - a) / (b - a)
+        }.coerceIn(0f, 1f)
+    }
+}
+
 /** One step of a sequence: these inputs for [frames] 60 Hz ticks. */
 data class MacroStep(val inputs: Set<PadInput>, val frames: Int)
 
@@ -132,7 +170,8 @@ enum class LayoutKind { GAMEPLAY, MENU, MAP }
  *    Blast 1 / Blast 2 / Ultimate, R3 transform) sending the matching Raging Blast 2 inputs.
  */
 object GameActions {
-    const val LAYOUT_VERSION = 1
+    /** 2: x goes through [ScreenMap]. Layouts saved as 1 keep x as a plain fraction of the width, as drawn. */
+    const val LAYOUT_VERSION = 2
 
     private fun press(vararg i: PadInput) = ControlAction.Press(setOf(*i))
 
@@ -153,8 +192,17 @@ object GameActions {
     val SUPER_RISING = press(PadInput.LB, PadInput.LT)
     val SUPERS = listOf(press(PadInput.RS_UP), press(PadInput.RS_RIGHT), press(PadInput.RS_DOWN), press(PadInput.RS_LEFT))
 
-    private const val CX = 0.875f
-    private const val CY = 0.66f
+    private const val CX = 0.865f
+    private const val CY = 0.68f
+
+    // The arc around the face buttons, the same places in every scheme (16:9 reference, ScreenMap): from the
+    // bottom-left of the diamond, where the thumb rests, up and over to the top-right corner.
+    private const val S1X = 0.675f; private const val S1Y = 0.84f   // guard
+    private const val S2X = 0.672f; private const val S2Y = 0.58f   // ascend
+    private const val S3X = 0.745f; private const val S3Y = 0.38f   // descend
+    private const val S4X = 0.855f; private const val S4Y = 0.27f   // Super Attacks
+    private const val S5X = 0.955f; private const val S5Y = 0.40f   // switch / transform
+    private const val S6X = 0.955f; private const val S6Y = 0.17f   // Ultimate
 
     private fun stick() = ControlElement("stick", ElementKind.STICK, press(), ControlIcon.MACRO, "", 0.15f, 0.64f, 150f)
     private fun dpad() = ControlElement("dpad", ElementKind.DPAD, press(), ControlIcon.MACRO, "", 0.15f, 0.64f, 150f)
@@ -176,17 +224,17 @@ object GameActions {
     fun ragingBlastLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
-            btn("melee", MELEE, ControlIcon.PUNCH, "X", CX - 0.075f, CY, 62f),
-            btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.18f, 62f),
+            btn("melee", MELEE, ControlIcon.PUNCH, "X", CX - 0.075f, CY, 64f),
+            btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.17f, 62f),
             btn("signature", SIGNATURE, ControlIcon.HYPER, "B", CX + 0.075f, CY, 62f),
-            btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.18f, 62f),
-            btn("guard", GUARD, ControlIcon.GUARD, "RB", 0.705f, 0.74f, 56f),
-            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", 0.70f, 0.47f, 48f),
-            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", 0.745f, 0.27f, 46f),
-            supers(0.84f, 0.21f, 58f),
-            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", 0.945f, 0.27f, 48f),
-            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", 0.965f, 0.45f, 44f),
-            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.30f, 0.88f, 46f),
+            btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.17f, 62f),
+            btn("guard", GUARD, ControlIcon.GUARD, "RB", S1X, S1Y, 60f),
+            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", S2X, S2Y, 50f),
+            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", S3X, S3Y, 48f),
+            supers(S4X, S4Y, 60f),
+            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", S5X, S5Y, 48f),
+            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", S6X, S6Y, 46f),
+            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.31f, 0.84f, 50f),
         ) + system(),
     )
 
@@ -195,48 +243,44 @@ object GameActions {
         listOf(
             stick(), dpad(),
             btn("melee", MELEE, ControlIcon.PUNCH, "X", CX - 0.075f, CY, 64f),
-            btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.18f, 62f),
+            btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.17f, 62f),
             btn("signature", SIGNATURE, ControlIcon.HYPER, "B", CX + 0.075f, CY, 62f),
-            btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.18f, 62f),
-            btn("guard", GUARD, ControlIcon.GUARD, "RB", 0.70f, 0.76f, 60f),
-            btn("vanishing", VANISHING, ControlIcon.VANISH, "RB+A", 0.695f, 0.52f, 46f),
-            btn("counter", COUNTER, ControlIcon.COUNTER, "RB+Y", 0.755f, 0.33f, 44f),
-            btn("throw", THROW, ControlIcon.GRAB, "RB+B", 0.615f, 0.90f, 44f),
-            supers(0.85f, 0.21f, 58f),
-            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", 0.955f, 0.40f, 50f),
-            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", 0.955f, 0.18f, 46f),
-            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", 0.31f, 0.52f, 50f),
-            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", 0.31f, 0.78f, 50f),
-            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.07f, 0.28f, 50f),
+            btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.17f, 62f),
+            btn("guard", GUARD, ControlIcon.GUARD, "RB", S1X, S1Y, 62f),
+            btn("vanishing", VANISHING, ControlIcon.VANISH, "RB+A", S2X, S2Y, 50f),
+            btn("counter", COUNTER, ControlIcon.COUNTER, "RB+Y", S3X, S3Y, 48f),
+            btn("throw", THROW, ControlIcon.GRAB, "RB+B", 0.565f, 0.90f, 46f),
+            supers(S4X, S4Y, 60f),
+            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", S5X, S5Y, 48f),
+            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", S6X, S6Y, 46f),
+            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", 0.31f, 0.54f, 50f),
+            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", 0.31f, 0.80f, 50f),
+            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.07f, 0.26f, 50f),
         ) + system(),
     )
 
     /**
-     * Budokai Tenkaichi 3 hands: □ melee (left), △ ki (top), ○ guard (right), ✕ dash (bottom); R1 / R2 ascend /
-     * descend on the right shoulder, L2 ki charge on the left; Blast 1 = signature skill, Blast 2 = the Super Attack
-     * disc, Ultimate, R3 transform.
-     */
-    /**
-     * Budokai Tenkaichi 3: a PS2 pad in BT3's places (□ melee, △ ki, ○ guard, ✕ dash, L1 lock-on, L2 charge and
-     * Blasts, R1 / R2 up / down, R3 transform). It sends the plain buttons; the game side
-     * (android/native/src/bt3_controls.cpp) turns them into Raging Blast 2 moves during fights, the same way it does
-     * for a physical controller. Blast 1 / Blast 2 / Ultimate are L2 combinations, here also as one-tap buttons.
+     * Budokai Tenkaichi 3: a PS2 pad in BT3's places (□ melee, △ ki, ○ guard, ✕ dash; L2 for ki charge and the
+     * Blasts on the left, where the left hand presses it on the pad; R1 / R2 up / down and R3 transform in the arc).
+     * It sends the plain buttons; the game side (android/native/src/bt3_controls.cpp) turns them into Raging Blast 2
+     * moves during fights, the same way it does for a physical controller. Blast 1 / Blast 2 / Ultimate are L2
+     * combinations, here also as one-tap buttons in the arc.
      */
     fun tenkaichiLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
-            btn("bt3_square", press(PadInput.X), ControlIcon.PUNCH, "□", CX - 0.075f, CY, 62f),
-            btn("bt3_triangle", press(PadInput.Y), ControlIcon.KI, "△", CX, CY - 0.18f, 62f),
+            btn("bt3_square", press(PadInput.X), ControlIcon.PUNCH, "□", CX - 0.075f, CY, 64f),
+            btn("bt3_triangle", press(PadInput.Y), ControlIcon.KI, "△", CX, CY - 0.17f, 62f),
             btn("bt3_circle", press(PadInput.B), ControlIcon.GUARD, "○", CX + 0.075f, CY, 62f),
-            btn("bt3_cross", press(PadInput.A), ControlIcon.DASH, "✕", CX, CY + 0.18f, 62f),
-            btn("bt3_r1", press(PadInput.RB), ControlIcon.ASCEND, "R1", 0.955f, 0.30f, 48f),
-            btn("bt3_r2", press(PadInput.RT), ControlIcon.DESCEND, "R2", 0.955f, 0.13f, 44f),
-            btn("bt3_l1", press(PadInput.LB), ControlIcon.LOCKON, "L1", 0.705f, 0.30f, 46f),
-            btn("bt3_l2", press(PadInput.LT), ControlIcon.CHARGE, "L2", 0.705f, 0.13f, 46f),
-            btn("bt3_r3", press(PadInput.R3), ControlIcon.TRANSFORM, "R3", 0.705f, 0.76f, 46f),
-            btn("bt3_blast1", press(PadInput.LT, PadInput.B), ControlIcon.HYPER, "L2+○", 0.80f, 0.13f, 44f),
-            btn("bt3_blast2", press(PadInput.LT, PadInput.Y), ControlIcon.SUPER, "L2+△", 0.835f, 0.30f, 48f),
-            btn("bt3_ultimate", press(PadInput.LT, PadInput.BACKWARD, PadInput.Y), ControlIcon.ULTIMATE, "L2+↓△", 0.615f, 0.90f, 44f),
+            btn("bt3_cross", press(PadInput.A), ControlIcon.DASH, "✕", CX, CY + 0.17f, 62f),
+            btn("bt3_blast2", press(PadInput.LT, PadInput.Y), ControlIcon.SUPER, "L2+△", S1X, S1Y, 58f),
+            btn("bt3_r1", press(PadInput.RB), ControlIcon.ASCEND, "R1", S2X, S2Y, 50f),
+            btn("bt3_r2", press(PadInput.RT), ControlIcon.DESCEND, "R2", S3X, S3Y, 48f),
+            btn("bt3_blast1", press(PadInput.LT, PadInput.B), ControlIcon.HYPER, "L2+○", S4X, S4Y, 52f),
+            btn("bt3_r3", press(PadInput.R3), ControlIcon.TRANSFORM, "R3", S5X, S5Y, 48f),
+            btn("bt3_ultimate", press(PadInput.LT, PadInput.BACKWARD, PadInput.Y), ControlIcon.ULTIMATE, "L2+↓△", S6X, S6Y, 46f),
+            btn("bt3_l2", press(PadInput.LT), ControlIcon.CHARGE, "L2", 0.31f, 0.84f, 54f),
+            btn("bt3_l1", press(PadInput.LB), ControlIcon.LOCKON, "L1", 0.07f, 0.26f, 42f),
         ) + system(),
     )
 

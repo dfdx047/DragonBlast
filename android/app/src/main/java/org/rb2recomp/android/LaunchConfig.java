@@ -432,8 +432,10 @@ public final class LaunchConfig {
         final boolean renut = renut(context);
         defaults.add("--swordman_renderer=" + (renut ? "renut" : "xenos"));
         // Budokai Tenkaichi 3 controls in fights (android/native/src/bt3_controls.cpp), touch and physical pads.
-        defaults.add("--rb2_bt3_controls=" + "bt3".equals(
-                context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2")));
+        final String scheme = context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("control_scheme", "rb2");
+        defaults.add("--rb2_bt3_controls=" + "bt3".equals(scheme));
+        // The physical controller's button remap of that scheme, in fights (android/native/src/pad_remap.cpp).
+        defaults.addAll(com.dfdx047.dragonblast.controls.PadRemap.launchArgs(context, scheme));
         // 16:9 with side bars, or stretched over the whole (wider) screen; the game menu changes it live.
         final boolean stretch = "stretch".equals(
                 context.getSharedPreferences("options", Context.MODE_PRIVATE).getString("aspect", "16:9"));

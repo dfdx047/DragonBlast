@@ -16,6 +16,7 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
 | Poco X6 Pro | `4LPF6HMFEYPZCEJB` | Mali-G615 MC6 (Dimensity 8300) | aparelho de teste deste projeto (2026-11-13) |
 | Xiaomi Mi A3 | `37b2869d7607` (USB) | Adreno 610 (Snapdragon 665, Armv8.0) | aparelho fraco de teste (2026-11-14); Renut só com Turnip |
 | Anbernic RG Cube | `192.168.1.184:5555` | Mali-G57 (Unisoc T820), tela 720×720 | liberado 2026-11-15; nunca mudar o modo de energia/desempenho |
+| AYN Odin 2 Mini | `192.168.1.206:5555` | Adreno 740, tela 1920×1080 | liberado 2026-11-15 para testes de tela/controles; não mudar o modo de energia |
 
 - Sempre `adb -s <serial>`. Outros aparelhos só com pedido do desenvolvedor.
 - Antes de cada toque ou captura, conferir que o Dragon Blast está em primeiro plano (`build/lab/guard.sh`): o
@@ -37,12 +38,19 @@ próximo (mesmo SDK, Renut, launcher): `~/AndroidStudioProjects/Dragon-Burst`.
   `game/TouchControlsView.kt` (desenho e toque), `game/HelperEngine.kt` (60 Hz → `org/libsdl/app/DragonBlastPad.java`,
   controle SDL virtual VID 0x1209 / PID 0xDB01), `game/TouchOverlay.kt` (liga tudo no `GameActivity`),
   `controls/ControlsEditorActivity.kt`. No build só-launcher essas três peças do SDL ficam de fora.
+  - Posições: frações de uma tela 16:9 levadas à tela real por `ScreenMap` (cada lado guarda a distância da sua
+    borda); layouts salvos com `version` 1 continuam lineares. Guia dos controles: `controls/ControlsGuideActivity.kt`.
+  - Controle físico: `controls/PadRemap.kt` + `PadRemapActivity.kt` (perfis `rb2` / `bt3` em
+    `files/controls/pad_remap.json`) → cvars `rb2_pad_remap` / `rb2_pad_remap_off` → `android/native/src/pad_remap.cpp`
+    (patch 0047 do SDK: filtro por aparelho, o toque é sintético e fica de fora). Só com `rb2_fight_state() == 1`.
+  - `game_state_jni.cpp`: cena `0x8264C228`, pausa `[0x8264C230] − 0x47C`, fim de luta `0x82614B0C` (0 depois de ter
+    sido ≠ 0 na mesma luta).
 
 ## Build
 - Só a launcher (sem o SDK ao lado do repositório o build entra sozinho nesse modo):
   `cd android && ./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - Jogo completo (tudo dentro de `build/`, com `TMPDIR=build/tmp`):
-  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0046).
+  1. `tools/android/prepare_sdk.sh` → `build/rexglue-sdk-android` (v0.10.0 + base de terceiros + patches 0001–0047).
      Precisa do `spirv-cross`: sem pacote no sistema, ele foi compilado em `build/third_party/spirv-cross-build`
      (tag vulkan-sdk-1.4.304.0) e o script o encontra sozinho.
   2. `tools/android/build_host_cli.sh` (recompilador `rexglue` para o PC).

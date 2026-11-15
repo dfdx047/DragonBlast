@@ -454,6 +454,9 @@ class MenuModel(
                 val scheme = ControlScheme.entries[i]
                 touchChanged { it.copy(controlScheme = scheme) }
                 host.setCvar("rb2_bt3_controls", (scheme == ControlScheme.TENKAICHI).toString())
+                val remap = com.dfdx047.dragonblast.controls.PadRemap.load(activity, com.dfdx047.dragonblast.controls.PadRemap.profileOf(scheme))
+                host.setCvar("rb2_pad_remap", com.dfdx047.dragonblast.controls.PadRemap.cvarMap(remap))
+                host.setCvar("rb2_pad_remap_off", com.dfdx047.dragonblast.controls.PadRemap.cvarOff(remap))
             },
             MChoice(
                 s(R.string.ctl_preset), s(R.string.ctl_preset_short),
@@ -478,9 +481,6 @@ class MenuModel(
             ) { i -> touchChanged { it.copy(haptics = Haptics.entries[i]) } },
             MAction(s(R.string.ctl_edit), s(R.string.menu_edit_help), s(R.string.menu_open)) {
                 host.openControlsEditor(touch?.isFightLayout == false)
-            },
-            MToggle(s(R.string.ctl_nintendo), s(R.string.ctl_nintendo_short), st.nintendoLayout, reopen = true) { v ->
-                update { it.copy(nintendoLayout = v) }
             },
         )
         return list
@@ -521,7 +521,7 @@ class MenuModel(
             SettingsStore.effectiveHeight(a.renderer, a.renderHeight) != SettingsStore.effectiveHeight(a.renderer, b.renderHeight)
         return heightNeedsReopen || a.showFps != b.showFps ||
             a.stereoAudio != b.stereoAudio || a.pauseInBackground != b.pauseInBackground ||
-            a.verboseLog != b.verboseLog || a.gpuStats != b.gpuStats || a.nintendoLayout != b.nintendoLayout
+            a.verboseLog != b.verboseLog || a.gpuStats != b.gpuStats
     }
 }
 

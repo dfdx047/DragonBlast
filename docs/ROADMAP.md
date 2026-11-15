@@ -11,7 +11,7 @@
   60 / 120 FPS (geração de quadros), mostrar FPS, pausar em segundo plano, áudio estéreo.
 - Controles: modo (desligado / automático / sempre), prévia desenhada, layouts Pro / Normal / Casual, estilo Dragon /
   Xbox / PlayStation / Nintendo, esquema da luta RB2 / Tenkaichi 3, opacidade, tamanho, analógico fixo/dinâmico, zona
-  morta, deslizar entre botões, canhoto, vibração, layout Nintendo no controle físico.
+  morta, deslizar entre botões, canhoto, vibração.
 - Drivers: GPU e driver do sistema, driver em uso (automático / sistema / instalados), importar .zip, listas do GitHub
   por fabricante — Adreno: Mr. Purple, StevenMXZ, K11MCH1, whitebelyash, faux123, ARMSX2; Mali: zenithblue (inclui as
   builds só para G615), JimVulkan, MaliSX2, FristOneRR, MineGraph, faux123 PanVK. Até 40 versões por fonte, cache de
@@ -130,3 +130,14 @@ Snapdragon 665 (4× A73 2,0 GHz + 4× A53), Adreno 610, Armv8.0 sem LSE, 3,6 GB,
   `setprop log.tag.DragonBlastPad V`: `pad [A]` / `pad []` a cada toque) e o jogo lê o pad 60×/s, mas nada mexe;
   abrir e fechar o menu lateral (XN_SYS_UI 1 → 0) destrava na hora. Não é o save (DB_SAVE não foi escrito). Próximo
   passo: logar no SDK os XN_SYS_UI dos diálogos/headless do XAM (`xam_ui.cpp`) e ver se algum fica sem o "0".
+
+## Controle físico e guia dos controles (feito, 2026-11-15)
+- Remapeamento do controle físico por esquema (perfil Raging Blast e perfil Tenkaichi 3; o Moderno usa o do Raging
+  Blast): tela com desenho do controle, troca por toque + botão, "Trocar A/B X/Y", "Padrão". Patch 0047 do SDK filtra
+  cada aparelho antes da junção, então o toque nunca é remapeado. Vale só na luta; menus, pausa e fim de luta usam os
+  botões normais (testado no RG Cube: log `pad remap on (fight)` / `off` na pausa e no fim, de novo `on` no "Fight
+  Again"). Teste de host do `pad_remap.cpp`: gatilhos analógicos, troca LT↔RB, botão desligado.
+- Guia "Como funcionam os controles" com os três esquemas numerados sobre a prévia real.
+- Layouts padrão novos (arco em volta dos quatro botões) e `ScreenMap` para telas 20:9 e quadradas; conferido no
+  Odin 2 Mini (16:9) e no RG Cube (1:1).
+- O toggle antigo "layout Nintendo no controle físico" saiu (virou o "Trocar A/B X/Y" do remapeamento).

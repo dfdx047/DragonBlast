@@ -18,7 +18,13 @@ First public release.
 - **Touch controls.**
   - Three fight schemes: Raging Blast, Modern and Tenkaichi 3.
   - Pro, Normal and Casual layouts, and an editor.
-  - Switches automatically between the menu and fight layouts.
+  - Switches automatically between the menu and fight layouts, also on the end-of-fight menu.
+  - New default layouts: the shoulder actions sit in an arc around the four main buttons, and keep their shape on
+    wide (20:9) and square (RG Cube) screens.
+  - Controls → "How the controls work": every on-screen button of each scheme, numbered on a drawing.
+- **Physical controller remap.** Controls → Physical controller → Remap buttons: a drawing of the pad, one profile for
+  Raging Blast and one for Tenkaichi 3, swap A/B X/Y, defaults. It applies in fights only; menus keep the pad's own
+  buttons, and the touch controls are never remapped.
 - **Drivers.** No driver comes inside the APK any more. Download Turnip (Adreno) or PanVK (Mali) in the Drivers tab;
   Adreno 6xx phones such as the Mi A3 need a Turnip for Renut.
 - **Launcher.** In Portuguese, English and Spanish, and fits square screens (RG Cube).

@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Gamepad
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.SportsMartialArts
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
@@ -31,6 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.dfdx047.dragonblast.controls.ControlLayoutStore
 import com.dfdx047.dragonblast.controls.ControlsEditorActivity
+import com.dfdx047.dragonblast.controls.ControlsGuideActivity
+import com.dfdx047.dragonblast.controls.PadRemap
+import com.dfdx047.dragonblast.controls.PadRemapActivity
 import com.dfdx047.dragonblast.controls.LayoutKind
 import com.dfdx047.dragonblast.data.Settings
 import com.dfdx047.dragonblast.game.TouchControlsView
@@ -146,6 +150,12 @@ fun ControlsScreen(vm: LauncherViewModel) {
                 selected = s.controlScheme,
                 onSelect = { c -> vm.update { it.copy(controlScheme = c) } },
             )
+            val context = LocalContext.current
+            OutlinedButton(onClick = { context.startActivity(Intent(context, ControlsGuideActivity::class.java)) }) {
+                Icon(Icons.Outlined.MenuBook, null, tint = DbColors.Ember)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.ctl_guide), color = DbColors.Text)
+            }
         }
 
         SectionCard(stringResource(R.string.ctl_fine), Icons.Outlined.Tune) {
@@ -197,8 +207,34 @@ fun ControlsScreen(vm: LauncherViewModel) {
         }
 
         SectionCard(stringResource(R.string.ctl_pad), Icons.Outlined.Gamepad, subtitle = stringResource(R.string.ctl_pad_sub)) {
-            SettingSwitch(stringResource(R.string.ctl_nintendo), help(R.string.ctl_nintendo_short, R.string.ctl_nintendo_long), s.nintendoLayout) { v ->
-                vm.update { it.copy(nintendoLayout = v) }
+            val context = LocalContext.current
+            // Re-read the profiles when the screen comes back from the remap screen.
+            var resumes by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+            val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            androidx.compose.runtime.DisposableEffect(owner) {
+                val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                    if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumes++
+                }
+                owner.lifecycle.addObserver(obs)
+                onDispose { owner.lifecycle.removeObserver(obs) }
+            }
+            resumes.let { }
+            val profile = PadRemap.profileOf(s.controlScheme)
+            val changes = PadRemap.changes(PadRemap.load(context, profile))
+            Text(
+                stringResource(R.string.ctl_pad_text, if (profile == "bt3") "Tenkaichi 3" else "Raging Blast"),
+                style = MaterialTheme.typography.bodySmall,
+                color = DbColors.TextDim,
+            )
+            Text(
+                if (changes == 0) stringResource(R.string.ctl_pad_default) else stringResource(R.string.ctl_pad_changed, changes),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (changes == 0) DbColors.TextFaint else DbColors.Ember,
+            )
+            OutlinedButton(onClick = { context.startActivity(Intent(context, PadRemapActivity::class.java)) }) {
+                Icon(Icons.Outlined.Gamepad, null, tint = DbColors.Ember)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.ctl_pad_remap), color = DbColors.Text)
             }
         }
     }

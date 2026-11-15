@@ -63,7 +63,6 @@ data class Settings(
     val swipeButtons: Boolean = false,
     val leftHanded: Boolean = false,
     val haptics: Haptics = Haptics.LIGHT,
-    val nintendoLayout: Boolean = false,
     // Debug
     val verboseLog: Boolean = false,
     val gpuStats: Boolean = false,
@@ -112,7 +111,6 @@ class SettingsStore(context: Context) {
             swipeButtons = prefs.getBoolean("swipe_buttons", false),
             leftHanded = prefs.getBoolean("left_handed", false),
             haptics = e("haptics", Haptics.entries.toTypedArray(), d.haptics) { it.key },
-            nintendoLayout = prefs.getBoolean("nintendo_layout", false),
             verboseLog = prefs.getBoolean("verbose_log", false),
             gpuStats = prefs.getBoolean("gpu_stats", false),
             extraArgs = prefs.getString("extra_args", "") ?: "",
@@ -147,7 +145,6 @@ class SettingsStore(context: Context) {
             .putBoolean("swipe_buttons", s.swipeButtons)
             .putBoolean("left_handed", s.leftHanded)
             .putString("haptics", s.haptics.key)
-            .putBoolean("nintendo_layout", s.nintendoLayout)
             .putBoolean("verbose_log", s.verboseLog)
             .putBoolean("gpu_stats", s.gpuStats)
             .putString("extra_args", s.extraArgs)

@@ -1,0 +1,43 @@
+diff --git a/include/rex/input/state_filter.h b/include/rex/input/state_filter.h
+index 811795fb..f84a4f84 100644
+--- a/include/rex/input/state_filter.h
++++ b/include/rex/input/state_filter.h
+@@ -14,4 +14,12 @@ namespace rex::input {
+ using StateFilter = void (*)(uint32_t user_index, X_INPUT_STATE* state);
+ void SetStateFilter(StateFilter filter);
+ 
++/**
++ * Dragon Blast (0047): called with each device's own state before the player's devices are merged. [synthetic] is
++ * true for the on-screen touch pad (and keyboard / stand-in devices): the player's button remapping only touches
++ * physical controllers (android/native/src/pad_remap.cpp).
++ */
++using DeviceStateFilter = void (*)(uint32_t user_index, bool synthetic, X_INPUT_STATE* state);
++void SetDeviceStateFilter(DeviceStateFilter filter);
++
+ }  // namespace rex::input
+diff --git a/src/input/input_system.cpp b/src/input/input_system.cpp
+index 3d0cabc0..6b63d3d3 100644
+--- a/src/input/input_system.cpp
++++ b/src/input/input_system.cpp
+@@ -217,8 +217,10 @@ X_RESULT InputSystem::GetCapabilities(uint32_t user_index, uint32_t flags,
+ // Dragon Blast (0042): a function that may rewrite a player's merged controller state (state_filter.h).
+ namespace {
+ std::atomic<StateFilter> g_state_filter{nullptr};
++std::atomic<DeviceStateFilter> g_device_filter{nullptr};  // 0047
+ }  // namespace
+ void SetStateFilter(StateFilter filter) { g_state_filter.store(filter, std::memory_order_release); }
++void SetDeviceStateFilter(DeviceStateFilter filter) { g_device_filter.store(filter, std::memory_order_release); }
+ 
+ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+   SCOPE_profile_cpu_f("hid");
+@@ -241,6 +243,10 @@ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+     if (driver->GetDeviceState(id, &state) != X_ERROR_SUCCESS) {
+       continue;
+     }
++    if (const DeviceStateFilter filter = g_device_filter.load(std::memory_order_acquire)) {
++      const DeviceInfo* info = DeviceInfoFor(id);
++      filter(user_index, info ? info->synthetic : false, &state);
++    }
+     active_devices_.Observe(user_index, id, state.gamepad);
+     if (!any) {
+       merged = state;

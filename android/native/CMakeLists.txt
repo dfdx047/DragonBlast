@@ -121,6 +121,7 @@ add_library(main SHARED
     src/live_settings.cpp
     src/game_state_jni.cpp
     src/bt3_controls.cpp
+    src/pad_remap.cpp
     src/custom_driver.cpp
     "${THPS_SDK}/src/ui/rex_app.cpp"
     $<TARGET_OBJECTS:rb2_recomp_objs>)

@@ -47,6 +47,16 @@
         <!-- Own process: native libraries cannot be reloaded, so each session starts clean.
              configChanges as in SDL3's template: rotating or plugging in a pad must not recreate it. -->
         <activity
+            android:name=".controls.PadRemapActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DragonBlast"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation" />
+        <activity
+            android:name=".controls.ControlsGuideActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DragonBlast"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation" />
+        <activity
             android:name=".controls.ControlsEditorActivity"
             android:exported="false"
             android:screenOrientation="sensorLandscape"

@@ -41,6 +41,10 @@ constexpr uint32_t kSceneFight = 3;
 // boots; the global below always points 0x47C bytes after it.
 constexpr uint32_t kPauseBasePtr = 0x8264C230;
 constexpr uint32_t kPauseOffset = 0x47C;
+// 2 while a fight runs (also paused), 0 once it is over and the end-of-fight menu (Fight Again / Save Replay) is up;
+// found on the Battle mode, 2026-11-15. Read as "over" only after it was seen non-zero in the same fight, so a mode
+// that never sets it keeps the old behaviour.
+constexpr uint32_t kBattleWord = 0x82614B0C;
 
 bool Committed(rex::memory::Memory* memory, uint32_t address) {
   auto* heap = memory->LookupHeap(address);
@@ -54,7 +58,7 @@ uint32_t Load(rex::memory::Memory* memory, uint32_t address) {
 
 }  // namespace
 
-// -1 = no game yet, 0 = menus, 1 = fight, 2 = fight with the pause menu open. Cheap: two loads, and a page check
+// -1 = no game yet, 0 = menus, 1 = fight, 2 = fight with a menu open (the pause menu or the end-of-fight menu). Cheap: two loads, and a page check
 // once a second (the words are only read once their pages are mapped).
 int rb2_fight_state() {
   rex::memory::Memory* memory = GuestMemory();
@@ -62,11 +66,14 @@ int rb2_fight_state() {
   static std::atomic<int64_t> checked{0};
   static std::atomic<bool> scene_ok{false};
   static std::atomic<uint32_t> pause_word{0};
+  static std::atomic<bool> battle_ok{false};
+  static std::atomic<bool> battle_seen{false};
   const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now().time_since_epoch()).count();
   if (now - checked.load(std::memory_order_relaxed) > 1000) {
     checked.store(now, std::memory_order_relaxed);
     scene_ok.store(Committed(memory, kSceneWord), std::memory_order_relaxed);
+    battle_ok.store(Committed(memory, kBattleWord), std::memory_order_relaxed);
     uint32_t pause = 0;
     if (Committed(memory, kPauseBasePtr)) {
       const uint32_t base = Load(memory, kPauseBasePtr);
@@ -75,7 +82,17 @@ int rb2_fight_state() {
     pause_word.store(pause, std::memory_order_relaxed);
   }
   if (!scene_ok.load(std::memory_order_relaxed)) return -1;
-  if (Load(memory, kSceneWord) != kSceneFight) return 0;
+  if (Load(memory, kSceneWord) != kSceneFight) {
+    battle_seen.store(false, std::memory_order_relaxed);
+    return 0;
+  }
+  if (battle_ok.load(std::memory_order_relaxed)) {
+    if (Load(memory, kBattleWord) != 0) {
+      battle_seen.store(true, std::memory_order_relaxed);
+    } else if (battle_seen.load(std::memory_order_relaxed)) {
+      return 2;  // the fight is over: end-of-fight menu
+    }
+  }
   const uint32_t pause = pause_word.load(std::memory_order_relaxed);
   return pause && Load(memory, pause) == 1 ? 2 : 1;
 }

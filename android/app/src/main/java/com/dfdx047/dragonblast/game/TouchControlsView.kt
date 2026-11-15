@@ -26,6 +26,7 @@ import com.dfdx047.dragonblast.controls.PadInput
 import com.dfdx047.dragonblast.controls.ButtonBadge
 import com.dfdx047.dragonblast.controls.ControlStyle
 import com.dfdx047.dragonblast.controls.Directional
+import com.dfdx047.dragonblast.controls.ScreenMap as ControlScreenMap
 import com.dfdx047.dragonblast.controls.TouchFeel
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -142,8 +143,23 @@ class TouchControlsView(context: Context) : View(context) {
     private fun icon(i: ControlIcon): Drawable =
         icons.getOrPut(i) { ContextCompat.getDrawable(context, i.drawable)!!.mutate() }
 
-    private fun cx(e: ControlElement) = (if (mirrored) 1f - e.x else e.x) * width
-    private fun cy(e: ControlElement) = e.y * height
+    /** Centre on screen: ScreenMap, then kept whole inside the view (no element is cut by an edge). */
+    private fun cx(e: ControlElement): Float {
+        val w = width.toFloat()
+        val fx = if (mirrored) 1f - e.x else e.x
+        val px = if (layout.version < 2) fx * w else ControlScreenMap.toPx(fx, w, height.toFloat())
+        val m = radius(e) + 4 * density
+        return if (w > 2 * m) px.coerceIn(m, w - m) else px
+    }
+
+    private fun cy(e: ControlElement): Float {
+        val h = height.toFloat()
+        val m = radius(e) + 4 * density
+        return if (h > 2 * m) (e.y * h).coerceIn(m, h - m) else e.y * h
+    }
+
+    /** Where an element is drawn (the controls guide numbers them). */
+    fun centerOf(e: ControlElement): android.graphics.PointF = android.graphics.PointF(cx(e), cy(e))
     private fun radius(e: ControlElement) =
         e.sizeDp * density * scale / 2f * (if (referenceWidthPx > 0 && width > 0) width.toFloat() / referenceWidthPx else 1f)
 
@@ -329,13 +345,14 @@ class TouchControlsView(context: Context) : View(context) {
             // Texto (LB, R1, ✕◀◀, X+Y...): pilula escura translucida.
             text.textSize = br * 0.95f
             val w = text.measureText(label) + br * 0.9f
+            val px = keepInside(bx, w)
             fill.shader = null
             fill.color = Color.argb(160, 10, 12, 16)
             fill.alpha = alphaOf(e, 0.75f)
-            c.drawRoundRect(bx - w / 2, by - br * 0.8f, bx + w / 2, by + br * 0.8f, br, br, fill)
+            c.drawRoundRect(px - w / 2, by - br * 0.8f, px + w / 2, by + br * 0.8f, br, br, fill)
             text.color = Color.WHITE
             text.alpha = alphaOf(e, 1f)
-            c.drawText(label, bx, by + text.textSize / 3, text)
+            c.drawText(label, px, by + text.textSize / 3, text)
             return
         }
         fill.shader = null
@@ -345,13 +362,20 @@ class TouchControlsView(context: Context) : View(context) {
         drawClassicGlyph(c, face[0], ps, bx, by, br * 1.05f, alphaOf(e, 1f), nin)
     }
 
+    /** A pill [w] wide centred at [bx], moved in so it is not cut by the left or right edge. */
+    private fun keepInside(bx: Float, w: Float): Float {
+        val m = 2 * density
+        return if (width > w + 2 * m) bx.coerceIn(w / 2 + m, width - w / 2 - m) else bx
+    }
+
     /** A text badge (pill) at the button's top right. */
     private fun drawLabelBadge(c: Canvas, e: ControlElement, label: String, x: Float, y: Float, r: Float) {
         val br = (r * 0.36f).coerceIn(9f * density, 15f * density)
-        val bx = x + r * 0.72f
+        val bx0 = x + r * 0.72f
         val by = y - r * 0.72f
         text.textSize = br * 0.95f
         val w = text.measureText(label) + br * 0.9f
+        val bx = keepInside(bx0, w)
         fill.shader = null
         fill.color = Color.argb(170, 10, 12, 16)
         fill.alpha = alphaOf(e, 0.8f)
@@ -760,7 +784,8 @@ class TouchControlsView(context: Context) : View(context) {
             MotionEvent.ACTION_MOVE -> {
                 val id = dragId ?: return true
                 if (width == 0 || height == 0) return true
-                val raw = ((ev.x - dragOffX) / width).coerceIn(0f, 1f)
+                val raw = if (layout.version < 2) ((ev.x - dragOffX) / width).coerceIn(0f, 1f)
+                    else ControlScreenMap.fromPx(ev.x - dragOffX, width.toFloat(), height.toFloat())
                 val nx = if (mirrored) 1f - raw else raw
                 val ny = ((ev.y - dragOffY) / height).coerceIn(0f, 1f)
                 layout = layout.copy(elements = layout.elements.map { if (it.id == id) it.copy(x = nx, y = ny) else it })
