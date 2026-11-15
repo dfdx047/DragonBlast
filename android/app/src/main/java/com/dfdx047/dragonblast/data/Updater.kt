@@ -50,7 +50,7 @@ object Updater {
         val r = Release(
             version = tag.removePrefix("v"),
             title = j.optString("name", tag),
-            notes = j.optString("body", ""),
+            notes = plainText(j.optString("body", "")),
             pageUrl = j.optString("html_url", RELEASES_URL),
             apkName = apk.getString("name"),
             apkUrl = apk.getString("browser_download_url"),
@@ -58,6 +58,26 @@ object Updater {
             digest = apk.optString("digest", "").ifBlank { null },
         )
         return if (newer(r.version, BuildConfig.VERSION_NAME)) r else null
+    }
+
+    /** Release notes are Markdown on GitHub: the dialog shows them as plain text (no tables, marks or links). */
+    fun plainText(md: String): String = md.lines()
+        .filterNot { it.trimStart().startsWith("|") }
+        .joinToString("\n") { line ->
+            line.replace(Regex("^#{1,6}\\s*"), "")
+                .replace(Regex("^\\s*[-*]\\s+"), "• ")
+                .replace(Regex("\\[([^\\]]+)]\\([^)]*\\)"), "$1")
+                .replace("**", "").replace("`", "")
+        }
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
+
+    /** The APK of an update already installed (this version or older) is no longer needed. */
+    fun cleanup(context: Context) {
+        dir(context).listFiles()?.forEach { f ->
+            val v = f.name.substringAfter("DragonBlast-", "").substringBefore(".apk")
+            if (f.name.endsWith(".part") || v.isEmpty() || !newer(v, BuildConfig.VERSION_NAME)) f.delete()
+        }
     }
 
     /** Whether an automatic check is due (and records it). */
@@ -96,8 +116,8 @@ object Updater {
     fun download(context: Context, r: Release, onProgress: (Long, Long) -> Unit): File {
         val d = dir(context)
         d.listFiles()?.forEach { it.delete() }   // older downloads
-        val out = File(d, r.apkName)
-        val part = File(d, r.apkName + ".part")
+        val out = File(d, "DragonBlast-${r.version}.apk")
+        val part = File(d, out.name + ".part")
         Http.download(r.apkUrl, part, onProgress)
         if (r.apkSize > 0 && part.length() != r.apkSize) {
             part.delete()

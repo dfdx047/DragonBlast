@@ -86,6 +86,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         refresh()
+        viewModelScope.launch(Dispatchers.IO) { runCatching { Updater.cleanup(app) } }
         if (settings.autoUpdates && Updater.autoCheckDue(app)) checkUpdate(manual = false)
         viewModelScope.launch(Dispatchers.IO) {
             val g = GpuInfo.get(app)
@@ -262,7 +263,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) {
                 checkingUpdate = false
                 r.onSuccess { rel ->
-                    updateStatus = ""
+                    updateStatus = if (rel == null) "" else null
                     if (rel != null) update = rel else if (manual) message = UiMessage(R.string.msg_update_none)
                 }.onFailure { e ->
                     updateStatus = e.message ?: e.javaClass.simpleName
