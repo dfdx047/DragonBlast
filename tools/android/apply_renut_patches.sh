@@ -33,7 +33,8 @@ done
 # Os ficheiros que algum patch toca.
 mapfile -t FILES < <(sed -n 's#^+++ b/\([^\t]*\).*#\1#p' "${PATCHES[@]}" | sort -u)
 
-TMP="$(mktemp -d)"
+# Absolute: the script cd-s into the submodule below, and a relative TMPDIR (build/tmp) would point inside it.
+TMP="$(cd "$(mktemp -d)" && pwd)"
 trap 'rm -rf "$TMP"' EXIT
 cd "$SUB"
 for f in "${FILES[@]}"; do

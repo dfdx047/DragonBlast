@@ -48,11 +48,14 @@ namespace {
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "rb2", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "rb2", __VA_ARGS__)
 
-// Where the loader found this very library. With extractNativeLibs the .so files live there, and so
-// do the GPU plugin the SDK dlopen()s by name.
+// Where the loader found the SDK runtime (librexruntime*.so). With extractNativeLibs the APK's .so files live
+// there, and so does the GPU plugin the SDK loads from GetExecutableFolder(). Not this library: since 0.3.0 the
+// game (libgame.so, this code) is decrypted into files/, and taking its folder left the Xenia renderer without
+// its plugin ("GPU plugin 'xenos' not found at files/librexgpu-xenosrd.so", issues #1, #2 and #4).
 std::string NativeLibraryDir() {
   Dl_info info{};
-  if (dladdr(reinterpret_cast<void*>(&NativeLibraryDir), &info) && info.dli_fname) {
+  if (dladdr(reinterpret_cast<void*>(&rex::InitializeAndroidSystemForApplicationContext), &info) &&
+      info.dli_fname) {
     std::string path(info.dli_fname);
     const size_t slash = path.find_last_of('/');
     if (slash != std::string::npos) {

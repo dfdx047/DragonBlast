@@ -405,6 +405,9 @@ public final class LaunchConfig {
         defaults.add("--log_flush_interval=2");
         defaults.add("--perf_log_csv=" + new File(dir(context, "perf"), "frames.csv"));
         defaults.add("--gpu_plugin=xenos");
+        // Xenia path: the game's occlusion queries only on Adreno. The Mali-G57 driver crashes in vkCmdEndQuery
+        // (Zandatsu, RG Cube); elsewhere the game gets the fixed sample count (everything "visible").
+        defaults.add("--occlusion_query_enable=" + gpuName(context).contains("Adreno"));
         defaults.add("--mnk_mode=true");
         // Without this the window is not fullscreen: the system bars stay on screen and the picture
         // is letterboxed inside the remaining area.

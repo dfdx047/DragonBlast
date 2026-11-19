@@ -1,0 +1,42 @@
+Dragon Blast (2026-11-19): Zandatsu's renut/0041. +-inf in the shaders' float constants becomes +-FLT_MAX on upload,
+so 0 x inf is 0 as on the Xenos (D3D9 multiply) instead of NaN on the host. MGR's sky turned its fog off with an infinite
+constant (black sky on the Mali-G615). swordman_renut_finite_constants (default true, read at start).
+
+diff --git a/app/src/renut_engine/gpu/render/draw.cpp b/app/src/renut_engine/gpu/render/draw.cpp
+--- a/app/src/renut_engine/gpu/render/draw.cpp
++++ b/app/src/renut_engine/gpu/render/draw.cpp
+@@ -91,6 +91,17 @@ REXCVAR_DEFINE_BOOL(swordman_renut_draw_resolves, false, "SwordMan",
+ REXCVAR_DEFINE_STRING(swordman_renut_diag_vs, "", "SwordMan",
+                       "Dragon Burst (diagnostic): vertex shader hashes (hex, first 8 digits, comma separated) whose "
+                       "vertex layouts and patched vfetches are logged");
++// Zandatsu (renut/0041): +-inf in the shaders' float constants becomes +-FLT_MAX (0 x inf = 0, as on the Xenos).
++REXCVAR_DEFINE_BOOL(swordman_renut_finite_constants, true, "SwordMan",
++                    "Renut: infinite float shader constants become the largest finite float, so 0 x inf is 0 as on "
++                    "the Xenos (MGR's sky turns its fog off with an infinite constant: black sky on Mali)")
++    .lifecycle(rex::cvar::Lifecycle::kInitOnly);
++namespace {
++bool FiniteConstantsOn() {
++  static const bool on = REXCVAR_GET(swordman_renut_finite_constants);
++  return on;
++}
++}  // namespace
+ REXCVAR_DEFINE_STRING(swordman_renut_skip_ps, "", "SwordMan",
+                       "Renut (diagnostic): pixel shader hashes (hex, comma separated) whose draws are skipped")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);  // Dragon Blast (renut/0204): live
+@@ -1827,6 +1838,16 @@ UploadAllocation UploadFloatConstants(const FloatConstants &constants, const u32
+     std::memcpy(last.bytes + group * kConstantGroupBytes, lanes, kConstantGroupBytes);
+     for (u32 &lane : lanes)
+       lane = std::byteswap(lane);
++    // Zandatsu (renut/0041, 12/11, ceu preto nas Mali-G615, issues #24 e #35): a Xenos multiplica a moda do D3D9
++    // (0 x inf = 0) e o MGR conta com isso: o ceu desliga o nevoeiro com fogParam.x = +inf, e o fator e
++    // saturate(inf * (60000 + z)). No host 0 x inf = NaN, e o saturate de NaN e indefinido (a Mali da o nevoeiro,
++    // preto). Com o maior float finito no lugar do infinito o resultado so muda nesse caso, que passa a dar 0.
++    if (FiniteConstantsOn()) {
++      for (u32 &lane : lanes) {
++        if ((lane & 0x7FFFFFFFu) == 0x7F800000u)
++          lane = (lane & 0x80000000u) | 0x7F7FFFFFu;
++      }
++    }
+     std::memcpy(out + group * kConstantGroupBytes, lanes, kConstantGroupBytes);
+   }
+   // Every register of those groups is in the upload, with the bytes it has

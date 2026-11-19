@@ -31,6 +31,8 @@ import com.dfdx047.dragonblast.ui.components.SectionCard
 import com.dfdx047.dragonblast.ui.components.SettingSlider
 import com.dfdx047.dragonblast.ui.components.SettingSwitch
 import com.dfdx047.dragonblast.ui.components.help
+import com.dfdx047.dragonblast.ui.components.Level
+import com.dfdx047.dragonblast.ui.components.StatusLine
 
 @Composable
 fun GraphicsScreen(vm: LauncherViewModel) {
@@ -47,6 +49,13 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                 selected = s.renderer,
                 onSelect = { r -> vm.update { it.copy(renderer = r) } },
             )
+            // The last game found the driver without what the Renut needs and ran on Xenia (rb2_renut_app.h).
+            if (s.renderer == Renderer.RENUT) {
+                val fallback = runCatching {
+                    java.io.File(com.dfdx047.dragonblast.data.AppPaths.root, "renut_fallback.txt").takeIf { it.isFile }?.readText()?.trim()
+                }.getOrNull()
+                if (!fallback.isNullOrEmpty()) StatusLine(stringResource(R.string.renderer_fallback, fallback), Level.WARN)
+            }
             Divider()
             // Renut: 360p to 4K; Xenia: up to the game's 720p.
             val heights = SettingsStore.heightsFor(s.renderer)
