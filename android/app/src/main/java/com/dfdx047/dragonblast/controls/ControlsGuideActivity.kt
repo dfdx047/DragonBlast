@@ -118,7 +118,7 @@ private val EXPLAINED = mapOf(
     GameActions.TOGGLE to Explained(R.string.act_toggle, R.string.guide_toggle),
     "bt3_square" to Explained(R.string.act_melee, R.string.act_melee_bt3),
     "bt3_triangle" to Explained(R.string.act_ki, R.string.act_ki_bt3),
-    "bt3_circle" to Explained(R.string.act_guard, R.string.act_guard_bt3),
+    "bt3_circle" to Explained(R.string.act_guard, R.string.guide_bt3_guard),
     "bt3_cross" to Explained(R.string.act_dash, R.string.act_dash_bt3),
     "bt3_r1" to Explained(R.string.act_ascend, R.string.act_ascend_bt3),
     "bt3_r2" to Explained(R.string.act_descend, R.string.act_descend_bt3),
@@ -128,6 +128,13 @@ private val EXPLAINED = mapOf(
     "bt3_blast1" to Explained(R.string.act_blast1, R.string.guide_blast1),
     "bt3_blast2" to Explained(R.string.act_supers, R.string.guide_blast2),
     "bt3_ultimate" to Explained(R.string.act_ultimate, R.string.guide_ult_bt3),
+    "swipe_supers" to Explained(R.string.act_supers, R.string.guide_swipe_supers),
+    "swipe_transform" to Explained(R.string.act_diamond, R.string.guide_swipe_transform),
+    "swipe_guard" to Explained(R.string.act_guard, R.string.guide_swipe_guard),
+    "swipe_flight" to Explained(R.string.swipe_flight, R.string.guide_swipe_flight),
+    "bt3_specials" to Explained(R.string.act_supers, R.string.guide_bt3_specials),
+    "bt3_transform" to Explained(R.string.act_transform, R.string.guide_bt3_transform),
+    "bt3_flight" to Explained(R.string.swipe_flight, R.string.guide_bt3_flight),
 )
 
 @Composable
@@ -359,7 +366,7 @@ private fun ElementRow(n: Int, e: ControlElement, scheme: ControlScheme, focused
 /** The pad button(s) an element sends, in the scheme's symbols (BT3: PlayStation). */
 private fun buttonTag(e: ControlElement, scheme: ControlScheme): String {
     if (e.kind == ElementKind.STICK) return ""
-    if (e.kind == ElementKind.RADIAL) return "RS"
+    if (e.kind == ElementKind.RADIAL) return e.label
     val inputs = (e.action as? ControlAction.Press)?.inputs ?: return e.label
     if (inputs.isEmpty()) return ""
     val ps = scheme == ControlScheme.TENKAICHI

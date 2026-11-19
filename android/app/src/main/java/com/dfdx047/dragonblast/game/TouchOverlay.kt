@@ -91,9 +91,17 @@ class TouchOverlay(private val activity: Activity, private val parent: ViewGroup
                     engine.setDpad(element.id, inputs)
                 }
 
-                override fun onRadial(element: ControlElement, action: ControlAction?) {
+                override fun onSwipeStart(element: ControlElement) {
                     ensurePad()
-                    if (action == null) engine.releaseElement(element.id) else engine.press(element.id, action)
+                    engine.swipeDown(element.id, element.action)
+                }
+
+                override fun onSwipeDir(element: ControlElement, dir: Int) {
+                    engine.swipeDir(element.id, element.radial.getOrNull(dir))
+                }
+
+                override fun onSwipeEnd(element: ControlElement, tapped: Boolean) {
+                    engine.swipeUp(element.id, if (tapped) element.tap else null)
                 }
             }
         }

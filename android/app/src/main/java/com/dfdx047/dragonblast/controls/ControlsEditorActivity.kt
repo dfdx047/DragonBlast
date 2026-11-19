@@ -188,7 +188,7 @@ fun ControlsEditor(
                         Icon(Icons.Filled.Add, null)
                         Text(stringResource(R.string.editor_add))
                     }
-                    AddMenu(addMenu, layout, onDismiss = { addMenu = false }) { e ->
+                    AddMenu(addMenu, layout, scheme, onDismiss = { addMenu = false }) { e ->
                         addMenu = false
                         val existing = layout.elements.firstOrNull { it.id == e.id }
                         if (existing != null) update(e.id) { it.copy(visible = true) } else add(e)
@@ -227,6 +227,7 @@ fun ControlsEditor(
             ) {
                 ElementPanel(
                     sel,
+                    scheme,
                     onChange = { f -> update(sel.id, f) },
                     onHide = {
                         update(sel.id) { it.copy(visible = false) }
@@ -243,35 +244,67 @@ fun ControlsEditor(
     }
 }
 
+/** Display name of a catalog choice (GameActions.choices) or of a one-tap helper, by key. */
+private fun choiceName(key: String): Int = when (key) {
+    "none" -> R.string.choice_none
+    "melee" -> R.string.act_melee
+    "ki" -> R.string.act_ki
+    "signature" -> R.string.act_signature
+    "dash" -> R.string.act_dash
+    "guard" -> R.string.act_guard
+    "ascend" -> R.string.helper_ascend
+    "descend" -> R.string.helper_descend
+    "rising", "bt3_rising" -> R.string.helper_rising
+    "charge" -> R.string.helper_charge
+    "diamond" -> R.string.helper_diamond
+    "ultimate", "bt3_ultimate" -> R.string.helper_ultimate
+    "super1", "bt3_super1" -> R.string.helper_super1
+    "super2", "bt3_super2" -> R.string.helper_super2
+    "super3", "bt3_super3" -> R.string.helper_super3
+    "super4", "bt3_super4" -> R.string.helper_super4
+    "sway", "bt3_sway" -> R.string.helper_sway
+    "vanishing", "bt3_vanishing" -> R.string.helper_vanishing
+    "counter", "bt3_counter" -> R.string.helper_counter
+    "throw" -> R.string.helper_throw
+    "bt3_square" -> R.string.choice_bt3_square
+    "bt3_triangle" -> R.string.choice_bt3_triangle
+    "bt3_circle" -> R.string.choice_bt3_circle
+    "bt3_cross" -> R.string.choice_bt3_cross
+    "bt3_r1" -> R.string.choice_bt3_r1
+    "bt3_r2" -> R.string.choice_bt3_r2
+    "bt3_l2" -> R.string.choice_bt3_l2
+    "bt3_r3" -> R.string.choice_bt3_r3
+    "bt3_blast1" -> R.string.choice_bt3_blast1
+    "swipe_supers", "bt3_specials" -> R.string.swipe_supers
+    "swipe_transform", "bt3_transform" -> R.string.swipe_transform
+    "swipe_guard" -> R.string.swipe_guard
+    "swipe_flight", "bt3_flight" -> R.string.swipe_flight
+    else -> R.string.editor_macro
+}
+
 @Composable
-private fun AddMenu(open: Boolean, layout: ControlLayout, onDismiss: () -> Unit, onAdd: (ControlElement) -> Unit) {
+private fun AddMenu(open: Boolean, layout: ControlLayout, scheme: ControlScheme, onDismiss: () -> Unit, onAdd: (ControlElement) -> Unit) {
     val present = layout.elements.filter { it.visible }.map { it.id }.toSet()
-    val helperNames = mapOf(
-        "sway" to R.string.helper_sway,
-        "vanishing" to R.string.helper_vanishing,
-        "counter" to R.string.helper_counter,
-        "throw" to R.string.helper_throw,
-        "ultimate" to R.string.helper_ultimate,
-        "charge" to R.string.helper_charge,
-        "ascend" to R.string.helper_ascend,
-        "descend" to R.string.helper_descend,
-        "rising" to R.string.helper_rising,
-        "diamond" to R.string.helper_diamond,
-        "super1" to R.string.helper_super1,
-        "super2" to R.string.helper_super2,
-        "super3" to R.string.helper_super3,
-        "super4" to R.string.helper_super4,
-    )
+    val helpers = GameActions.helpers(scheme)
+    val swipes = GameActions.swipeHelpers(scheme)
     DropdownMenu(expanded = open, onDismissRequest = onDismiss) {
-        Text(stringResource(R.string.editor_helpers), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 12.dp))
-        GameActions.HELPERS.filter { it.first !in present }.forEach { (id, action, icon) ->
+        Text(stringResource(R.string.editor_swipes), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 12.dp))
+        swipes.filter { it.id !in present }.forEach { e ->
             DropdownMenuItem(
-                text = { Text(stringResource(helperNames[id] ?: R.string.editor_macro)) },
+                text = { Text(stringResource(if (e.id == "bt3_circle") R.string.swipe_guard else choiceName(e.id))) },
+                onClick = { onAdd(e) },
+            )
+        }
+        HorizontalDivider()
+        Text(stringResource(R.string.editor_helpers), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 12.dp))
+        helpers.filter { it.first !in present }.forEach { (id, action, icon) ->
+            DropdownMenuItem(
+                text = { Text(stringResource(choiceName(id))) },
                 onClick = { onAdd(ControlElement(id, ElementKind.BUTTON, action, icon, id.uppercase(), 0.5f, 0.5f, 52f)) },
             )
         }
         // Elementos escondidos voltam a aparecer.
-        layout.elements.filter { !it.visible && GameActions.HELPERS.none { h -> h.first == it.id } }.forEach { e ->
+        layout.elements.filter { e -> !e.visible && helpers.none { h -> h.first == e.id } && swipes.none { it.id == e.id } }.forEach { e ->
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.editor_show, e.label.ifBlank { e.id })) },
                 onClick = { onAdd(e.copy(visible = true)) },
@@ -282,11 +315,11 @@ private fun AddMenu(open: Boolean, layout: ControlLayout, onDismiss: () -> Unit,
         listOf(PadInput.A, PadInput.B, PadInput.X, PadInput.Y, PadInput.LB, PadInput.RB, PadInput.LT, PadInput.RT,
             PadInput.BACK, PadInput.START, PadInput.L3, PadInput.R3).forEach { input ->
             DropdownMenuItem(
-                text = { Text(GameActions.classicLabel(input, false)) },
+                text = { Text(GameActions.classicLabel(input, scheme == ControlScheme.TENKAICHI)) },
                 onClick = {
                     val id = "pad_${input.name.lowercase()}_${System.currentTimeMillis() % 100000}"
                     onAdd(ControlElement(id, ElementKind.BUTTON, ControlAction.Press(setOf(input)), ControlIcon.MACRO,
-                        GameActions.classicLabel(input, false), 0.5f, 0.5f, 52f))
+                        GameActions.classicLabel(input, scheme == ControlScheme.TENKAICHI), 0.5f, 0.5f, 52f))
                 },
             )
         }
@@ -305,6 +338,7 @@ private fun AddMenu(open: Boolean, layout: ControlLayout, onDismiss: () -> Unit,
 @Composable
 private fun ElementPanel(
     e: ControlElement,
+    scheme: ControlScheme,
     onChange: ((ControlElement) -> ControlElement) -> Unit,
     onHide: () -> Unit,
     onDelete: () -> Unit,
@@ -318,7 +352,8 @@ private fun ElementPanel(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(e.label.ifBlank { e.id }, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = onHide) { Icon(Icons.Filled.VisibilityOff, stringResource(R.string.editor_hide)) }
-            val custom = e.id.startsWith("macro_") || e.id.startsWith("pad_") || GameActions.HELPERS.any { it.first == e.id }
+            val custom = e.id.startsWith("macro_") || e.id.startsWith("pad_") ||
+                GameActions.helpers(scheme).any { it.first == e.id } || GameActions.swipeHelpers(scheme).any { it.id == e.id }
             if (custom) IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, stringResource(R.string.delete)) }
         }
         LabeledSlider(stringResource(R.string.editor_size), e.sizeDp, 28f..220f, "${e.sizeDp.roundToInt()} dp") { v ->
@@ -327,7 +362,60 @@ private fun ElementPanel(
         LabeledSlider(stringResource(R.string.editor_opacity), e.opacity, 0.1f..1f, "${(e.opacity * 100).roundToInt()}%") { v ->
             onChange { it.copy(opacity = v) }
         }
+        if (e.kind == ElementKind.RADIAL) SwipeEditor(e, scheme, onChange)
         if (e.id.startsWith("macro_")) MacroEditor(e, onChange)
+    }
+}
+
+/**
+ * A swipe button's parts, each picked from the scheme's moves (GameActions.choices): what it holds while touched,
+ * what a tap plays, and the move of each direction. The mark drawn on that side follows the choice.
+ */
+@Composable
+private fun SwipeEditor(e: ControlElement, scheme: ControlScheme, onChange: ((ControlElement) -> ControlElement) -> Unit) {
+    val choices = GameActions.choices(scheme)
+    Text(stringResource(R.string.editor_swipe_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    ChoiceRow(stringResource(R.string.editor_swipe_hold), e.action, choices) { c -> onChange { it.copy(action = c.action) } }
+    ChoiceRow(stringResource(R.string.editor_swipe_tap), e.tap, choices) { c ->
+        onChange { el ->
+            val hints = (el.hints + List(5) { "" }).take(5).toMutableList().also { it[4] = c.hint }
+            el.copy(tap = if (GameActions.isNothing(c.action)) null else c.action, hints = hints)
+        }
+    }
+    listOf(R.string.editor_swipe_up, R.string.editor_swipe_right, R.string.editor_swipe_down, R.string.editor_swipe_left)
+        .forEachIndexed { dir, title ->
+            ChoiceRow(stringResource(title), e.radial.getOrNull(dir), choices) { c ->
+                onChange { el ->
+                    val radial = (el.radial + List(4) { GameActions.NOTHING }).take(4).toMutableList().also { it[dir] = c.action }
+                    val hints = (el.hints + List(5) { "" }).take(5).toMutableList().also { it[dir] = c.hint }
+                    el.copy(radial = radial, hints = hints)
+                }
+            }
+        }
+}
+
+@Composable
+private fun ChoiceRow(title: String, current: ControlAction?, choices: List<GameActions.Choice>, onPick: (GameActions.Choice) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val now = choices.firstOrNull { it.action == current || (GameActions.isNothing(current) && it.key == "none") }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(110.dp))
+        Box(Modifier.weight(1f)) {
+            OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (now != null) stringResource(choiceName(now.key)) else stringResource(R.string.choice_custom), maxLines = 1)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                choices.forEach { c ->
+                    DropdownMenuItem(
+                        text = { Text((if (c.hint.isNotBlank()) c.hint + "  " else "") + stringResource(choiceName(c.key))) },
+                        onClick = {
+                            open = false
+                            onPick(c)
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

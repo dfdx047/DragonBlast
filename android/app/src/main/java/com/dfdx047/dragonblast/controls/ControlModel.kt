@@ -8,13 +8,14 @@ import org.json.JSONObject
 
 /**
  * Inputs of the virtual pad. FORWARD/BACKWARD are relative to the fighter (towards / away from the opponent): in
- * Raging Blast 2's behind-the-back camera they become left stick up / down (HelperEngine). RS_* push the right stick
- * (Super Attacks).
+ * Raging Blast 2's behind-the-back camera they become left stick up / down (HelperEngine); STICK_LEFT / STICK_RIGHT
+ * push the left stick sideways (the Tenkaichi 3 scheme's L2 + →△ / ←△). RS_* push the right stick (Super Attacks).
  */
 enum class PadInput {
     A, B, X, Y, LB, RB, LT, RT, BACK, START, L3, R3,
     UP, DOWN, LEFT, RIGHT, FORWARD, BACKWARD,
     RS_UP, RS_RIGHT, RS_DOWN, RS_LEFT,
+    STICK_LEFT, STICK_RIGHT,
 }
 
 /**
@@ -68,8 +69,10 @@ sealed class ControlAction {
 }
 
 /**
- * BUTTON: a disc. STICK / DPAD: the left thumb. RADIAL: a disc whose drag direction picks one of four actions
- * ([ControlElement.radial]: up, right, down, left); a plain tap plays the first.
+ * BUTTON: a disc. STICK / DPAD: the left thumb. RADIAL: a swipe button. While the finger is on it, its
+ * [ControlElement.action] is held (e.g. RT, which opens the transformation diamond; may be empty); sliding the finger
+ * towards ↑ → ↓ ← adds that direction's action ([ControlElement.radial]: up, right, down, left) for as long as it
+ * stays there; lifting it without having slid plays [ControlElement.tap]. One button instead of five.
  */
 enum class ElementKind { BUTTON, STICK, DPAD, RADIAL }
 
@@ -136,8 +139,12 @@ data class ControlElement(
     val sizeDp: Float,
     val opacity: Float = 1f,
     val visible: Boolean = true,
-    /** RADIAL only: the actions for up, right, down, left. */
+    /** RADIAL only: the actions for up, right, down, left (an empty Press = nothing that way). */
     val radial: List<ControlAction> = emptyList(),
+    /** RADIAL only: what a tap without sliding plays (null = nothing beyond [action]). */
+    val tap: ControlAction? = null,
+    /** RADIAL only: short marks drawn at up, right, down, left and (5th) under the icon for the tap. */
+    val hints: List<String> = emptyList(),
 )
 
 /** [menu] = the layout outside fights (A/B/X/Y with the pad's symbols); otherwise the fight layout. */
@@ -162,18 +169,30 @@ enum class LayoutKind { GAMEPLAY, MENU, MAP }
  *  RB+B throw · right stick up/right/down/left: the four Super Attacks · R3 Ultimate (High Tension) · D-pad down
  *  (hold) ki charge · RT (hold) the switch / transformation / fusion diamond, X/Y/B/A pick a slot · Start pause.
  *
+ * A phone has two thumbs and no shoulder buttons, so the default layouts fold the button combinations into swipe
+ * buttons (ElementKind.RADIAL): touch, slide towards a direction, lift. The direction always matches the place of the
+ * face button it adds on the pad's diamond (↑ Y / △, → B / ○, ↓ A / ✕, ← X / □):
+ *  - Transform: holds RT (R3 in Tenkaichi 3) and slides to the diamond slot.
+ *  - Super Attacks: tap = Super 1; ↑ Ultimate; → / ↓ / ← Super 2 / 3 / 4.
+ *  - Guard: holds RB (○ in Tenkaichi 3); ↑ counter, → throw, ↓ vanishing, ← sway.
+ *  - Flight: ↑ ascend, ↓ descend, held while the finger stays there.
+ *
  * Three touch schemes share those inputs:
- *  - RAGING_BLAST: the pad as the game was designed, Super Attacks on a radial disc (drag = right stick direction).
- *  - MODERN: one tap per action, Sparking! Zero style: sway / vanishing / counter / throw get their own buttons, plus
- *    Ultimate, ki charge, ascend and descend; the transform / switch diamond on one button.
- *  - TENKAICHI: Budokai Tenkaichi 3 positions (□ melee, △ ki, ○ guard, ✕ dash, R1/R2 up/down, L2 charge,
- *    Blast 1 / Blast 2 / Ultimate, R3 transform) sending the matching Raging Blast 2 inputs.
+ *  - RAGING_BLAST: the game's buttons, combinations on the swipe buttons.
+ *  - MODERN: the same plus one-tap vanishing and counter (no slide for the two most used defensive moves).
+ *  - TENKAICHI: Budokai Tenkaichi 3 positions (□ melee, △ ki, ○ guard, ✕ dash, R1 / R2 flight, L2 charge, R3
+ *    transform) sending the PS2 buttons; android/native/src/bt3_controls.cpp turns them into Raging Blast 2 moves.
  */
 object GameActions {
-    /** 2: x goes through [ScreenMap]. Layouts saved as 1 keep x as a plain fraction of the width, as drawn. */
-    const val LAYOUT_VERSION = 2
+    /**
+     * 2: x goes through [ScreenMap]. Layouts saved as 1 keep x as a plain fraction of the width, as drawn.
+     * 3: swipe buttons (RADIAL with a held action, tap and hints). Fight layouts saved before 3 are replaced by the new
+     *    defaults (ControlLayoutStore): their RADIAL meant something else and the old button walls are gone.
+     */
+    const val LAYOUT_VERSION = 3
 
     private fun press(vararg i: PadInput) = ControlAction.Press(setOf(*i))
+    val NOTHING = ControlAction.Press(emptySet())
 
     val MELEE = press(PadInput.X)
     val KI_BLAST = press(PadInput.Y)
@@ -192,24 +211,84 @@ object GameActions {
     val SUPER_RISING = press(PadInput.LB, PadInput.LT)
     val SUPERS = listOf(press(PadInput.RS_UP), press(PadInput.RS_RIGHT), press(PadInput.RS_DOWN), press(PadInput.RS_LEFT))
 
+    // Tenkaichi 3 (PS2 buttons as sent: □ X, △ Y, ○ B, ✕ A, L1 LB, R1 RB, L2 LT, R2 RT).
+    /** L2 + a stick direction + △: the direction first (2 frames), so bt3_controls.cpp reads it with the △. */
+    private fun bt3Blast(dir: PadInput?): ControlAction =
+        if (dir == null) press(PadInput.LT, PadInput.Y)
+        else ControlAction.Sequence(
+            listOf(MacroStep(setOf(PadInput.LT, dir), 2), MacroStep(setOf(PadInput.LT, dir, PadInput.Y), 8)),
+            holdLast = false,
+        )
+    val BT3_BLAST1 = press(PadInput.LT, PadInput.B)
+    val BT3_SUPER1 = bt3Blast(null)
+    val BT3_SUPER2 = bt3Blast(PadInput.FORWARD)
+    val BT3_SUPER3 = bt3Blast(PadInput.STICK_RIGHT)
+    val BT3_SUPER4 = bt3Blast(PadInput.STICK_LEFT)
+    val BT3_ULTIMATE = bt3Blast(PadInput.BACKWARD)
+
     private const val CX = 0.865f
     private const val CY = 0.68f
 
     // The arc around the face buttons, the same places in every scheme (16:9 reference, ScreenMap): from the
     // bottom-left of the diamond, where the thumb rests, up and over to the top-right corner.
     private const val S1X = 0.675f; private const val S1Y = 0.84f   // guard
-    private const val S2X = 0.672f; private const val S2Y = 0.58f   // ascend
-    private const val S3X = 0.745f; private const val S3Y = 0.38f   // descend
-    private const val S4X = 0.855f; private const val S4Y = 0.27f   // Super Attacks
-    private const val S5X = 0.955f; private const val S5Y = 0.40f   // switch / transform
-    private const val S6X = 0.955f; private const val S6Y = 0.17f   // Ultimate
+    private const val S2X = 0.672f; private const val S2Y = 0.56f   // flight
+    private const val S4X = 0.80f;  private const val S4Y = 0.30f   // Super Attacks
+    private const val S5X = 0.945f; private const val S5Y = 0.34f   // switch / transform
+    private const val S6X = 0.70f;  private const val S6Y = 0.32f   // extra (Modern: counter, BT3: Blast 1)
 
     private fun stick() = ControlElement("stick", ElementKind.STICK, press(), ControlIcon.MACRO, "", 0.15f, 0.64f, 150f)
     private fun dpad() = ControlElement("dpad", ElementKind.DPAD, press(), ControlIcon.MACRO, "", 0.15f, 0.64f, 150f)
     private fun btn(id: String, a: ControlAction, icon: ControlIcon, label: String, x: Float, y: Float, size: Float) =
         ControlElement(id, ElementKind.BUTTON, a, icon, label, x, y, size)
-    private fun supers(x: Float, y: Float, size: Float) =
-        ControlElement("supers", ElementKind.RADIAL, SUPERS[0], ControlIcon.SUPER, "RS", x, y, size, radial = SUPERS)
+
+    private fun swipe(
+        id: String, icon: ControlIcon, label: String, x: Float, y: Float, size: Float,
+        hold: ControlAction, up: ControlAction, right: ControlAction, down: ControlAction, left: ControlAction,
+        tap: ControlAction?, hints: List<String>,
+    ) = ControlElement(id, ElementKind.RADIAL, hold, icon, label, x, y, size,
+        radial = listOf(up, right, down, left), tap = tap, hints = hints)
+
+    // Swipe buttons of the Raging Blast and Modern schemes (also offered by the editor).
+    fun swipeSupers(x: Float = S4X, y: Float = S4Y, size: Float = 66f) = swipe(
+        "swipe_supers", ControlIcon.SUPER, "RS", x, y, size, NOTHING,
+        ULTIMATE, SUPERS[1], SUPERS[2], SUPERS[3], tap = SUPERS[0], hints = listOf("★", "2", "3", "4", "1"),
+    )
+    fun swipeTransform(x: Float = S5X, y: Float = S5Y, size: Float = 54f) = swipe(
+        "swipe_transform", ControlIcon.TRANSFORM, "RT", x, y, size, DIAMOND,
+        KI_BLAST, SIGNATURE, DASH, MELEE, tap = null, hints = listOf("Y", "B", "A", "X"),
+    )
+    fun swipeGuard(x: Float = S1X, y: Float = S1Y, size: Float = 62f) = swipe(
+        "swipe_guard", ControlIcon.GUARD, "RB", x, y, size, GUARD,
+        press(PadInput.Y), press(PadInput.B), press(PadInput.A), press(PadInput.X), tap = null,
+        hints = listOf("Y", "B", "A", "X"),
+    )
+    fun swipeFlight(x: Float = S2X, y: Float = S2Y, size: Float = 54f) = swipe(
+        "swipe_flight", ControlIcon.ASCEND, "LB/LT", x, y, size, NOTHING,
+        ASCEND, NOTHING, DESCEND, NOTHING, tap = null, hints = listOf("▲", "", "▼", ""),
+    )
+
+    // Tenkaichi 3 swipe buttons.
+    fun bt3SwipeSpecials(x: Float = S4X, y: Float = S4Y, size: Float = 66f) = swipe(
+        "bt3_specials", ControlIcon.SUPER, "L2+△", x, y, size, NOTHING,
+        BT3_ULTIMATE, BT3_SUPER2, BT3_SUPER3, BT3_SUPER4, tap = BT3_SUPER1, hints = listOf("★", "2", "3", "4", "1"),
+    )
+    fun bt3SwipeTransform(x: Float = S5X, y: Float = S5Y, size: Float = 54f) = swipe(
+        "bt3_transform", ControlIcon.TRANSFORM, "R3", x, y, size, press(PadInput.R3),
+        press(PadInput.Y), press(PadInput.B), press(PadInput.A), press(PadInput.X), tap = null,
+        hints = listOf("△", "○", "✕", "□"),
+    )
+    fun bt3SwipeFlight(x: Float = S2X, y: Float = S2Y, size: Float = 54f) = swipe(
+        "bt3_flight", ControlIcon.ASCEND, "R1/R2", x, y, size, NOTHING,
+        press(PadInput.RB), NOTHING, press(PadInput.RT), NOTHING, tap = null, hints = listOf("R1", "", "R2", ""),
+    )
+    /** ○ is guard in Tenkaichi 3; sliding adds △ / ✕ / □ for counter, vanishing and sway (bt3_controls.cpp). */
+    fun bt3SwipeGuard(x: Float, y: Float, size: Float) = swipe(
+        "bt3_circle", ControlIcon.GUARD, "○", x, y, size, press(PadInput.B),
+        press(PadInput.Y), NOTHING, press(PadInput.A), press(PadInput.X), tap = null,
+        hints = listOf("△", "", "✕", "□"),
+    )
+
     /** Start / Back, and the fight ⇄ menus layout switch between them (the overlay handles [TOGGLE]). */
     private fun system() = listOf(
         btn("back", press(PadInput.BACK), ControlIcon.BACK, "BACK", 0.36f, 0.08f, 40f),
@@ -220,7 +299,7 @@ object GameActions {
     /** Id of the button that switches between the fight and the menu layout. */
     const val TOGGLE = "layout_toggle"
 
-    /** The pad as designed: face buttons, guard, flight, the Super Attack disc, Ultimate, charge, the diamond. */
+    /** The game's buttons; guard, flight, Super Attacks and the diamond as swipe buttons. 9 buttons + stick. */
     fun ragingBlastLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
@@ -228,17 +307,15 @@ object GameActions {
             btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.17f, 62f),
             btn("signature", SIGNATURE, ControlIcon.HYPER, "B", CX + 0.075f, CY, 62f),
             btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.17f, 62f),
-            btn("guard", GUARD, ControlIcon.GUARD, "RB", S1X, S1Y, 60f),
-            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", S2X, S2Y, 50f),
-            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", S3X, S3Y, 48f),
-            supers(S4X, S4Y, 60f),
-            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", S5X, S5Y, 48f),
-            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", S6X, S6Y, 46f),
-            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.31f, 0.84f, 50f),
+            swipeGuard(),
+            swipeFlight(),
+            swipeSupers(),
+            swipeTransform(),
+            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.31f, 0.84f, 52f),
         ) + system(),
     )
 
-    /** One tap per action: defensive moves and flight on their own buttons, no button combinations to learn. */
+    /** Raging Blast plus one-tap vanishing and counter, the two defensive moves used most. */
     fun modernLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
@@ -246,41 +323,34 @@ object GameActions {
             btn("ki", KI_BLAST, ControlIcon.KI, "Y", CX, CY - 0.17f, 62f),
             btn("signature", SIGNATURE, ControlIcon.HYPER, "B", CX + 0.075f, CY, 62f),
             btn("dash", DASH, ControlIcon.DASH, "A", CX, CY + 0.17f, 62f),
-            btn("guard", GUARD, ControlIcon.GUARD, "RB", S1X, S1Y, 62f),
-            btn("vanishing", VANISHING, ControlIcon.VANISH, "RB+A", S2X, S2Y, 50f),
-            btn("counter", COUNTER, ControlIcon.COUNTER, "RB+Y", S3X, S3Y, 48f),
-            btn("throw", THROW, ControlIcon.GRAB, "RB+B", 0.565f, 0.90f, 46f),
-            supers(S4X, S4Y, 60f),
-            btn("diamond", DIAMOND, ControlIcon.TRANSFORM, "RT", S5X, S5Y, 48f),
-            btn("ultimate", ULTIMATE, ControlIcon.ULTIMATE, "R3", S6X, S6Y, 46f),
-            btn("ascend", ASCEND, ControlIcon.ASCEND, "LB", 0.31f, 0.54f, 50f),
-            btn("descend", DESCEND, ControlIcon.DESCEND, "LT", 0.31f, 0.80f, 50f),
-            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.07f, 0.26f, 50f),
+            swipeGuard(),
+            btn("vanishing", VANISHING, ControlIcon.VANISH, "RB+A", 0.50f, 0.90f, 48f),
+            btn("counter", COUNTER, ControlIcon.COUNTER, "RB+Y", S6X - 0.12f, S6Y + 0.06f, 46f),
+            swipeFlight(0.31f, 0.56f),
+            swipeSupers(),
+            swipeTransform(),
+            btn("charge", KI_CHARGE, ControlIcon.CHARGE, "↓", 0.31f, 0.84f, 52f),
         ) + system(),
     )
 
     /**
-     * Budokai Tenkaichi 3: a PS2 pad in BT3's places (□ melee, △ ki, ○ guard, ✕ dash; L2 for ki charge and the
-     * Blasts on the left, where the left hand presses it on the pad; R1 / R2 up / down and R3 transform in the arc).
-     * It sends the plain buttons; the game side (android/native/src/bt3_controls.cpp) turns them into Raging Blast 2
-     * moves during fights, the same way it does for a physical controller. Blast 1 / Blast 2 / Ultimate are L2
-     * combinations, here also as one-tap buttons in the arc.
+     * Budokai Tenkaichi 3: a PS2 pad in BT3's places (□ melee, △ ki, ○ guard, ✕ dash; L2 for ki charge on the left,
+     * where the left hand presses it on the pad). It sends the plain buttons; the game side
+     * (android/native/src/bt3_controls.cpp) turns them into Raging Blast 2 moves during fights, the same way it does
+     * for a physical controller. The L2 + △ Blasts, R1 / R2 and R3 + slot are swipe buttons.
      */
     fun tenkaichiLayout() = ControlLayout(
         listOf(
             stick(), dpad(),
             btn("bt3_square", press(PadInput.X), ControlIcon.PUNCH, "□", CX - 0.075f, CY, 64f),
             btn("bt3_triangle", press(PadInput.Y), ControlIcon.KI, "△", CX, CY - 0.17f, 62f),
-            btn("bt3_circle", press(PadInput.B), ControlIcon.GUARD, "○", CX + 0.075f, CY, 62f),
+            bt3SwipeGuard(CX + 0.075f, CY, 62f),
             btn("bt3_cross", press(PadInput.A), ControlIcon.DASH, "✕", CX, CY + 0.17f, 62f),
-            btn("bt3_blast2", press(PadInput.LT, PadInput.Y), ControlIcon.SUPER, "L2+△", S1X, S1Y, 58f),
-            btn("bt3_r1", press(PadInput.RB), ControlIcon.ASCEND, "R1", S2X, S2Y, 50f),
-            btn("bt3_r2", press(PadInput.RT), ControlIcon.DESCEND, "R2", S3X, S3Y, 48f),
-            btn("bt3_blast1", press(PadInput.LT, PadInput.B), ControlIcon.HYPER, "L2+○", S4X, S4Y, 52f),
-            btn("bt3_r3", press(PadInput.R3), ControlIcon.TRANSFORM, "R3", S5X, S5Y, 48f),
-            btn("bt3_ultimate", press(PadInput.LT, PadInput.BACKWARD, PadInput.Y), ControlIcon.ULTIMATE, "L2+↓△", S6X, S6Y, 46f),
+            bt3SwipeFlight(),
+            bt3SwipeSpecials(),
+            btn("bt3_blast1", BT3_BLAST1, ControlIcon.HYPER, "L2+○", S1X, S1Y, 56f),
+            bt3SwipeTransform(),
             btn("bt3_l2", press(PadInput.LT), ControlIcon.CHARGE, "L2", 0.31f, 0.84f, 54f),
-            btn("bt3_l1", press(PadInput.LB), ControlIcon.LOCKON, "L1", 0.07f, 0.26f, 42f),
         ) + system(),
     )
 
@@ -316,12 +386,13 @@ object GameActions {
     fun defaultLayout(kind: LayoutKind, scheme: ControlScheme): ControlLayout =
         if (kind == LayoutKind.GAMEPLAY) fightLayout(scheme) else menuLayout()
 
-    /** Extra buttons the editor can add to any fight layout. */
+    /** Extra one-tap buttons the editor can add to a fight layout of the Raging Blast / Modern schemes. */
     val HELPERS: List<Triple<String, ControlAction, ControlIcon>> = listOf(
         Triple("sway", SWAY, ControlIcon.PURSUIT),
         Triple("vanishing", VANISHING, ControlIcon.VANISH),
         Triple("counter", COUNTER, ControlIcon.COUNTER),
         Triple("throw", THROW, ControlIcon.GRAB),
+        Triple("guard", GUARD, ControlIcon.GUARD),
         Triple("ultimate", ULTIMATE, ControlIcon.ULTIMATE),
         Triple("charge", KI_CHARGE, ControlIcon.CHARGE),
         Triple("ascend", ASCEND, ControlIcon.ASCEND),
@@ -333,6 +404,57 @@ object GameActions {
         Triple("super3", SUPERS[2], ControlIcon.SUPER),
         Triple("super4", SUPERS[3], ControlIcon.SUPER),
     )
+
+    /** Extra one-tap buttons for the Tenkaichi 3 scheme (BT3 buttons and combinations). */
+    val BT3_HELPERS: List<Triple<String, ControlAction, ControlIcon>> = listOf(
+        Triple("bt3_super1", BT3_SUPER1, ControlIcon.SUPER),
+        Triple("bt3_super2", BT3_SUPER2, ControlIcon.SUPER),
+        Triple("bt3_super3", BT3_SUPER3, ControlIcon.SUPER),
+        Triple("bt3_super4", BT3_SUPER4, ControlIcon.SUPER),
+        Triple("bt3_ultimate", BT3_ULTIMATE, ControlIcon.ULTIMATE),
+        Triple("bt3_r1", press(PadInput.RB), ControlIcon.ASCEND),
+        Triple("bt3_r2", press(PadInput.RT), ControlIcon.DESCEND),
+        Triple("bt3_r3", press(PadInput.R3), ControlIcon.TRANSFORM),
+        Triple("bt3_sway", press(PadInput.B, PadInput.X), ControlIcon.PURSUIT),
+        Triple("bt3_vanishing", press(PadInput.B, PadInput.A), ControlIcon.VANISH),
+        Triple("bt3_counter", press(PadInput.B, PadInput.Y), ControlIcon.COUNTER),
+        Triple("bt3_rising", press(PadInput.RB, PadInput.RT), ControlIcon.HYPER),
+    )
+
+    fun helpers(scheme: ControlScheme) = if (scheme == ControlScheme.TENKAICHI) BT3_HELPERS else HELPERS
+
+    /** Swipe buttons the editor can add (each id once). */
+    fun swipeHelpers(scheme: ControlScheme): List<ControlElement> = if (scheme == ControlScheme.TENKAICHI) {
+        listOf(bt3SwipeSpecials(0.5f, 0.5f), bt3SwipeTransform(0.5f, 0.5f), bt3SwipeFlight(0.5f, 0.5f),
+            bt3SwipeGuard(0.5f, 0.5f, 60f))
+    } else {
+        listOf(swipeSupers(0.5f, 0.5f), swipeTransform(0.5f, 0.5f), swipeGuard(0.5f, 0.5f), swipeFlight(0.5f, 0.5f))
+    }
+
+    /** What a swipe button's hold / tap / direction can be set to in the editor, per scheme. */
+    data class Choice(val key: String, val action: ControlAction, val hint: String)
+
+    fun choices(scheme: ControlScheme): List<Choice> = if (scheme == ControlScheme.TENKAICHI) listOf(
+        Choice("none", NOTHING, ""),
+        Choice("bt3_square", press(PadInput.X), "□"), Choice("bt3_triangle", press(PadInput.Y), "△"),
+        Choice("bt3_circle", press(PadInput.B), "○"), Choice("bt3_cross", press(PadInput.A), "✕"),
+        Choice("bt3_r1", press(PadInput.RB), "R1"), Choice("bt3_r2", press(PadInput.RT), "R2"),
+        Choice("bt3_l2", press(PadInput.LT), "L2"), Choice("bt3_r3", press(PadInput.R3), "R3"),
+        Choice("bt3_blast1", BT3_BLAST1, "B1"), Choice("bt3_super1", BT3_SUPER1, "1"), Choice("bt3_super2", BT3_SUPER2, "2"),
+        Choice("bt3_super3", BT3_SUPER3, "3"), Choice("bt3_super4", BT3_SUPER4, "4"), Choice("bt3_ultimate", BT3_ULTIMATE, "★"),
+        Choice("bt3_sway", press(PadInput.B, PadInput.X), "≈"), Choice("bt3_vanishing", press(PadInput.B, PadInput.A), "≫"),
+        Choice("bt3_counter", press(PadInput.B, PadInput.Y), "↺"), Choice("bt3_rising", press(PadInput.RB, PadInput.RT), "⇑"),
+    ) else listOf(
+        Choice("none", NOTHING, ""),
+        Choice("melee", MELEE, "X"), Choice("ki", KI_BLAST, "Y"), Choice("signature", SIGNATURE, "B"), Choice("dash", DASH, "A"),
+        Choice("guard", GUARD, "RB"), Choice("ascend", ASCEND, "▲"), Choice("descend", DESCEND, "▼"), Choice("rising", SUPER_RISING, "⇑"),
+        Choice("charge", KI_CHARGE, "↓"), Choice("diamond", DIAMOND, "RT"), Choice("ultimate", ULTIMATE, "★"),
+        Choice("super1", SUPERS[0], "1"), Choice("super2", SUPERS[1], "2"), Choice("super3", SUPERS[2], "3"), Choice("super4", SUPERS[3], "4"),
+        Choice("sway", SWAY, "≈"), Choice("vanishing", VANISHING, "≫"), Choice("counter", COUNTER, "↺"), Choice("throw", THROW, "T"),
+    )
+
+    /** True for an action that sends nothing. */
+    fun isNothing(a: ControlAction?): Boolean = a == null || (a is ControlAction.Press && a.inputs.isEmpty())
 
     /** Label of a pad input on an Xbox, PlayStation or Nintendo pad (Nintendo: by position, A on the right). */
     fun classicLabel(input: PadInput, playstation: Boolean, nintendo: Boolean = false): String = when (input) {
@@ -358,6 +480,8 @@ object GameActions {
         PadInput.RS_RIGHT -> "R→"
         PadInput.RS_DOWN -> "R↓"
         PadInput.RS_LEFT -> "R←"
+        PadInput.STICK_LEFT -> "◀"
+        PadInput.STICK_RIGHT -> "▶"
     }
 }
 
@@ -373,7 +497,11 @@ object ControlLayoutStore {
         val f = file(kind, scheme)
         if (!f.isFile) return GameActions.defaultLayout(kind, scheme)
         return try {
-            fromJson(JSONObject(f.readText())).copy(menu = kind != LayoutKind.GAMEPLAY)
+            val saved = fromJson(JSONObject(f.readText()))
+            // Before version 3 a RADIAL was the Super Attack disc and the fight layouts were walls of buttons: the
+            // swipe-button defaults replace them (menu layouts carry over).
+            if (kind == LayoutKind.GAMEPLAY && saved.version < 3) return GameActions.defaultLayout(kind, scheme)
+            saved.copy(menu = kind != LayoutKind.GAMEPLAY)
         } catch (e: Exception) {
             GameActions.defaultLayout(kind, scheme)
         }
@@ -436,7 +564,9 @@ object ControlLayoutStore {
                         .put("icon", e.icon.name).put("label", e.label)
                         .put("x", e.x.toDouble()).put("y", e.y.toDouble()).put("size", e.sizeDp.toDouble())
                         .put("opacity", e.opacity.toDouble()).put("visible", e.visible)
-                        .put("radial", JSONArray().apply { e.radial.forEach { put(actionToJson(it)) } }),
+                        .put("radial", JSONArray().apply { e.radial.forEach { put(actionToJson(it)) } })
+                        .apply { e.tap?.let { put("tap", actionToJson(it)) } }
+                        .put("hints", JSONArray().apply { e.hints.forEach { put(it) } }),
                 )
             }
         },
@@ -447,6 +577,7 @@ object ControlLayoutStore {
         val list = (0 until arr.length()).map { i ->
             val e = arr.getJSONObject(i)
             val radial = e.optJSONArray("radial")
+            val hints = e.optJSONArray("hints")
             ControlElement(
                 id = e.getString("id"),
                 kind = runCatching { ElementKind.valueOf(e.getString("kind")) }.getOrDefault(ElementKind.BUTTON),
@@ -459,6 +590,8 @@ object ControlLayoutStore {
                 opacity = e.optDouble("opacity", 1.0).toFloat().coerceIn(0.05f, 1f),
                 visible = e.optBoolean("visible", true),
                 radial = if (radial == null) emptyList() else (0 until radial.length()).map { actionFromJson(radial.getJSONObject(it)) },
+                tap = e.optJSONObject("tap")?.let { actionFromJson(it) },
+                hints = if (hints == null) emptyList() else (0 until hints.length()).map { hints.optString(it) },
             )
         }
         return ControlLayout(list, o.optInt("version", 1))

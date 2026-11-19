@@ -31,6 +31,14 @@ class HelperEngine {
         val done get() = index >= steps.size
     }
     private val sequences = HashMap<String, Running>()
+
+    /** A swipe button being touched: when it was, how long its held action leads, the direction's token. */
+    private class Swipe(val start: Long, val lead: Long) {
+        var token = 0
+        var dirAt = 0L
+        var hasDir = false
+    }
+    private val swipes = HashMap<String, Swipe>()
     private var stickX = 0f
     private var stickY = 0f
 
@@ -115,6 +123,7 @@ class HelperEngine {
             held.clear()
             pressedAt.clear()
             sequences.clear()
+            swipes.clear()
             stickX = 0f
             stickY = 0f
         }
@@ -169,6 +178,71 @@ class HelperEngine {
             }
         }
         handler.post { step() }
+    }
+
+    // ------------------------------------------------------------------------------------------- swipe buttons
+
+    /**
+     * A swipe button was touched: its [hold] action from now on (RT for the transformation diamond, RB for guard,
+     * nothing for the Super Attacks). A direction chosen later is added only [SWIPE_LEAD_MS] after a non-empty hold
+     * went down, so the game has seen the diamond / the guard open before the slot or the defensive move.
+     */
+    fun swipeDown(id: String, hold: ControlAction) {
+        val empty = hold is ControlAction.Press && hold.inputs.isEmpty()
+        synchronized(lock) { swipes[id] = Swipe(SystemClock.uptimeMillis(), if (empty) 0L else SWIPE_LEAD_MS) }
+        if (!empty) press(id, hold)
+    }
+
+    /** The finger moved to a direction ([action]) or back to the middle (null): that direction's action replaces the last. */
+    fun swipeDir(id: String, action: ControlAction?) {
+        val key = "$id#dir"
+        val st: Swipe
+        val token: Int
+        val at: Long
+        synchronized(lock) {
+            st = swipes[id] ?: return
+            token = ++st.token
+            st.hasDir = false
+            at = maxOf(SystemClock.uptimeMillis(), st.start + st.lead)
+        }
+        releaseElement(key)
+        if (action == null || (action is ControlAction.Press && action.inputs.isEmpty())) return
+        synchronized(lock) {
+            st.hasDir = true
+            st.dirAt = at
+        }
+        handler.postAtTime({
+            val live = synchronized(lock) { swipes[id] === st && st.token == token }
+            if (live) press(key, action)
+        }, at)
+    }
+
+    /**
+     * The finger left the swipe button; [tap] = what a tap without sliding plays (Super Attack 1), or null. The held
+     * action stays until the direction's action has had its minimum press, so a quick flick still lands.
+     */
+    fun swipeUp(id: String, tap: ControlAction?) {
+        if (tap != null) swipeDir(id, tap)
+        val st: Swipe
+        val token: Int
+        val releaseAt: Long
+        synchronized(lock) {
+            st = swipes[id] ?: run {
+                releaseElement(id)
+                return
+            }
+            token = st.token
+            releaseAt = if (st.hasDir) maxOf(SystemClock.uptimeMillis(), st.dirAt + 1) else SystemClock.uptimeMillis()
+        }
+        handler.postAtTime({
+            synchronized(lock) {
+                if (swipes[id] !== st || st.token != token) return@postAtTime
+                swipes.remove(id)
+            }
+            releaseElement("$id#dir")
+            // The hold (RT, RB) outlasts the direction's press by a frame: the diamond / guard closes after the pick.
+            if (st.hasDir) handler.postDelayed({ releaseElement(id) }, MIN_PRESS_MS + 20) else releaseElement(id)
+        }, releaseAt)
     }
 
     fun setStick(x: Float, y: Float) {
@@ -241,13 +315,13 @@ class HelperEngine {
             lx = stickX
             ly = stickY
         }
-        // Command buttons (forward / back + a button) push the left stick, where the game reads directions;
-        // the touch D-pad keeps its own keys.
-        if (PadInput.FORWARD in wanted || PadInput.BACKWARD in wanted) {
-            lx = 0f
-            ly = if (PadInput.FORWARD in wanted) -1f else 1f
-            wanted.remove(PadInput.FORWARD)
-            wanted.remove(PadInput.BACKWARD)
+        // Command buttons (forward / back / sideways + a button) push the left stick, where the game reads
+        // directions; the touch D-pad keeps its own keys.
+        val stickDirs = setOf(PadInput.FORWARD, PadInput.BACKWARD, PadInput.STICK_LEFT, PadInput.STICK_RIGHT)
+        if (wanted.any { it in stickDirs }) {
+            lx = (if (PadInput.STICK_RIGHT in wanted) 1f else 0f) - (if (PadInput.STICK_LEFT in wanted) 1f else 0f)
+            ly = (if (PadInput.BACKWARD in wanted) 1f else 0f) - (if (PadInput.FORWARD in wanted) 1f else 0f)
+            wanted.removeAll(stickDirs)
         }
         flush(wanted, lx, ly)
     }
@@ -338,6 +412,8 @@ class HelperEngine {
         const val MAP_DELAY_TICKS = 90
         /** Toque minimo (ms): a 30 fps o jogo le o comando a cada 33 ms. */
         const val MIN_PRESS_MS = 80L
+        /** A swipe button's held action (RT, RB) leads its direction by this much (~6 frames at 30 fps). */
+        const val SWIPE_LEAD_MS = 150L
         /** De quantos em quantos ticks (~16 ms) ver se a GPU se perdeu. */
         const val GPU_LOST_CHECK_TICKS = 30
     }

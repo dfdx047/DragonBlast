@@ -47,8 +47,12 @@ class TouchControlsView(context: Context) : View(context) {
         fun onRelease(element: ControlElement)
         fun onStick(x: Float, y: Float)
         fun onDpad(element: ControlElement, inputs: Set<PadInput>)
-        /** A radial disc chose [action] (held until the next call); null = released. */
-        fun onRadial(element: ControlElement, action: ControlAction?)
+        /** A swipe button was touched (its held action starts). */
+        fun onSwipeStart(element: ControlElement)
+        /** The finger on a swipe button slid to [dir] (0 up, 1 right, 2 down, 3 left) or back to the middle (-1). */
+        fun onSwipeDir(element: ControlElement, dir: Int)
+        /** The finger left a swipe button; [tapped] = it never slid (the button's tap action plays). */
+        fun onSwipeEnd(element: ControlElement, tapped: Boolean)
     }
 
     interface EditListener {
@@ -122,8 +126,12 @@ class TouchControlsView(context: Context) : View(context) {
     private var stickOx = 0f
     private var stickOy = 0f
     private val dpadState = HashMap<String, Set<PadInput>>()
-    /** Radial disc id -> chosen direction (0 up, 1 right, 2 down, 3 left; -1 none yet). */
+    /** Swipe button id -> chosen direction (0 up, 1 right, 2 down, 3 left; -1 none). */
     private val radialDir = HashMap<String, Int>()
+    /** Swipe button id -> where the finger landed (directions are measured from there, not from the centre). */
+    private val radialOrigin = HashMap<String, android.graphics.PointF>()
+    /** Swipe buttons whose finger slid at some point (no tap action on release). */
+    private val radialSlid = HashSet<String>()
 
     // Edicao
     private var dragId: String? = null
@@ -440,8 +448,9 @@ class TouchControlsView(context: Context) : View(context) {
     }
 
     /**
-     * Radial disc (Super Attacks): the icon in the middle, four notches for up / right / down / left; while a finger
-     * drags, the chosen quarter lights up in ember.
+     * Swipe button: the icon in the middle, a short mark for each direction that does something (its hint: the
+     * diamond slot, the Super Attack number...) and, under the icon, the tap's hint. While a finger is on it, the
+     * chosen quarter lights up in ember.
      */
     private fun drawRadial(c: Canvas, e: ControlElement) {
         val x = cx(e)
@@ -449,7 +458,7 @@ class TouchControlsView(context: Context) : View(context) {
         val r = radius(e)
         val down = e.id in pressed
         val dir = radialDir[e.id] ?: -1
-        drawGlass(c, e, x, y, r, false)
+        drawGlass(c, e, x, y, r, down && dir < 0)
         if (dir >= 0) {
             fill.shader = null
             fill.color = orange
@@ -457,21 +466,69 @@ class TouchControlsView(context: Context) : View(context) {
             val start = -135f + dir * 90f
             c.drawArc(x - r, y - r, x + r, y + r, start, 90f, true, fill)
         }
-        // notches
+        // Thin ring segments between the quarters: it slides, it is not a plain button.
+        ring.strokeWidth = 1.2f * density
+        ring.color = glassEdge
+        ring.alpha = alphaOf(e, 0.35f)
         for (i in 0 until 4) {
+            val a = Math.toRadians(-45.0 + i * 90.0)
+            c.drawLine(
+                x + (kotlin.math.cos(a) * r * 0.58f).toFloat(), y + (kotlin.math.sin(a) * r * 0.58f).toFloat(),
+                x + (kotlin.math.cos(a) * r * 0.9f).toFloat(), y + (kotlin.math.sin(a) * r * 0.9f).toFloat(), ring,
+            )
+        }
+        for (i in 0 until 4) {
+            if (GameActions.isNothing(e.radial.getOrNull(i))) continue
             val a = Math.toRadians(-90.0 + i * 90.0)
-            val nx = x + (kotlin.math.cos(a) * r * 0.78f).toFloat()
-            val ny = y + (kotlin.math.sin(a) * r * 0.78f).toFloat()
-            fill.color = if (i == dir) Color.WHITE else gold
-            fill.alpha = alphaOf(e, if (i == dir) 1f else 0.7f)
-            c.drawCircle(nx, ny, r * 0.075f, fill)
+            val nx = x + (kotlin.math.cos(a) * r * 0.74f).toFloat()
+            val ny = y + (kotlin.math.sin(a) * r * 0.74f).toFloat()
+            val hint = e.hints.getOrNull(i).orEmpty()
+            if (hint.isBlank()) {
+                fill.color = if (i == dir) Color.WHITE else gold
+                fill.alpha = alphaOf(e, if (i == dir) 1f else 0.7f)
+                c.drawCircle(nx, ny, r * 0.075f, fill)
+            } else {
+                text.color = if (i == dir) Color.WHITE else hintColor(hint)
+                text.alpha = alphaOf(e, if (i == dir) 1f else 0.9f)
+                text.textSize = (r * 0.27f).coerceAtLeast(9f * density)
+                c.drawText(hint, nx, ny + text.textSize / 3, text)
+            }
         }
         val d = icon(e.icon)
-        val sz = (r * 0.9f).toInt()
-        d.setBounds((x - sz / 2).toInt(), (y - sz / 2).toInt(), (x + sz / 2).toInt(), (y + sz / 2).toInt())
+        val sz = (r * 0.78f).toInt()
+        val iy = y - r * 0.04f
+        d.setBounds((x - sz / 2).toInt(), (iy - sz / 2).toInt(), (x + sz / 2).toInt(), (iy + sz / 2).toInt())
         d.colorFilter = PorterDuffColorFilter(if (down) Color.WHITE else gold, PorterDuff.Mode.SRC_IN)
         d.alpha = alphaOf(e, 1f)
         d.draw(c)
+        val tapHint = e.hints.getOrNull(4).orEmpty()
+        if (tapHint.isNotBlank() && !GameActions.isNothing(e.tap)) {
+            text.color = Color.WHITE
+            text.alpha = alphaOf(e, 0.85f)
+            text.textSize = (r * 0.2f).coerceAtLeast(8f * density)
+            c.drawText(tapHint, x + r * 0.3f, y + r * 0.34f, text)
+        }
+        // The pad buttons it holds (RT, R3, RB...) in the corner, as on the other buttons.
+        val badgeStyle = when (style) {
+            ControlStyle.XBOX -> ButtonBadge.XBOX
+            ControlStyle.PLAYSTATION -> ButtonBadge.PLAYSTATION
+            ControlStyle.NINTENDO -> ButtonBadge.NINTENDO
+            else -> badge
+        }
+        if (badgeStyle != ButtonBadge.NONE && e.label.isNotBlank() && !layout.menu) drawLabelBadge(c, e, e.label, x, y, r)
+    }
+
+    /** PlayStation glyph colours for BT3 hints, the Xbox ones for the letters; ember otherwise. */
+    private fun hintColor(h: String): Int = when (h) {
+        "△" -> Color.parseColor("#40E2A0")
+        "○" -> Color.parseColor("#FF6666")
+        "✕" -> Color.parseColor("#7CB2E8")
+        "□" -> Color.parseColor("#E899C9")
+        "Y" -> Color.parseColor("#F6C41B")
+        "B" -> Color.parseColor("#E5312C")
+        "A" -> Color.parseColor("#5DC21E")
+        "X" -> Color.parseColor("#2C8BE5")
+        else -> gold
     }
 
     private fun drawStick(c: Canvas, e: ControlElement) {
@@ -608,10 +665,14 @@ class TouchControlsView(context: Context) : View(context) {
                         pressButton(e)
                     }
                     ElementKind.RADIAL -> {
+                        if (e.id in pressed) return true  // already held by another finger
                         pointers[pid] = e.id
                         radialDir[e.id] = -1
+                        radialOrigin[e.id] = android.graphics.PointF(px, py)
+                        radialSlid.remove(e.id)
                         pressed.add(e.id)
                         if (haptics) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        listener?.onSwipeStart(e)
                         invalidate()
                     }
                 }
@@ -673,33 +734,51 @@ class TouchControlsView(context: Context) : View(context) {
             }
             ElementKind.BUTTON -> releaseButton(e)
             ElementKind.RADIAL -> {
-                // A plain tap plays the first action (Super Attack 1).
-                if ((radialDir[e.id] ?: -1) < 0) e.radial.firstOrNull()?.let { listener?.onRadial(e, it) }
-                listener?.onRadial(e, null)
+                listener?.onSwipeEnd(e, e.id !in radialSlid)
                 radialDir.remove(e.id)
+                radialOrigin.remove(e.id)
+                radialSlid.remove(e.id)
                 pressed.remove(e.id)
                 invalidate()
             }
         }
     }
 
+    /**
+     * Direction of the finger from where it landed: past [swipeThreshold] it picks the quarter (↑ → ↓ ←); back
+     * within 60 % of that it returns to "none" (the flight button stops ascending). Directions without an action are
+     * ignored, so a sloppy slide on the transform button never lands on an empty side.
+     */
     private fun updateRadial(e: ControlElement, px: Float, py: Float) {
-        val dx = px - cx(e)
-        val dy = py - cy(e)
-        if (hypot(dx, dy) < radius(e) * 0.3f) return
-        val a = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) // 0 = right, 90 = down
+        val o = radialOrigin[e.id] ?: return
+        val dx = px - o.x
+        val dy = py - o.y
+        val dist = hypot(dx, dy)
+        val threshold = swipeThreshold(e)
+        val current = radialDir[e.id] ?: -1
         val dir = when {
-            a >= -135 && a < -45 -> 0
-            a >= -45 && a < 45 -> 1
-            a >= 45 && a < 135 -> 2
-            else -> 3
+            dist >= threshold -> {
+                val a = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) // 0 = right, 90 = down
+                val d = when {
+                    a >= -135 && a < -45 -> 0
+                    a >= -45 && a < 45 -> 1
+                    a >= 45 && a < 135 -> 2
+                    else -> 3
+                }
+                if (GameActions.isNothing(e.radial.getOrNull(d))) current else d
+            }
+            dist < threshold * 0.6f -> -1
+            else -> current
         }
-        if (radialDir[e.id] == dir) return
+        if (dist >= threshold) radialSlid.add(e.id)
+        if (dir == current) return
         radialDir[e.id] = dir
-        if (haptics) performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        e.radial.getOrNull(dir)?.let { listener?.onRadial(e, it) }
+        if (haptics && dir >= 0) performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        listener?.onSwipeDir(e, dir)
         invalidate()
     }
+
+    private fun swipeThreshold(e: ControlElement) = maxOf(radius(e) * 0.38f, 14f * density)
 
     private fun pressButton(e: ControlElement) {
         if (!pressed.add(e.id)) return

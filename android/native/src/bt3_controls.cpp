@@ -14,7 +14,8 @@
 //   L2 + △ (neutral / ↑ / → / ←)                right stick up / right / down / left: Super Attacks 1-4
 //   L2 + ↓ + △                                  R3 Ultimate Attack
 //   L2 + ✕ / L2 + □                             A / X
-//   R3 or L3                                    RT held: switch / transform / fusion diamond
+//   R3 or L3                                    RT held: switch / transform / fusion diamond; while held,
+//                                               □ △ ○ ✕ go through as X Y B A (the diamond's slots)
 //   L1 lock-on                                  (Raging Blast 2 locks on by itself: nothing)
 //   Start, Back, d-pad, right stick             unchanged
 //
@@ -159,7 +160,12 @@ void Filter(uint32_t user_index, rex::input::X_INPUT_STATE* state) {
     case Combo::kNone: break;
   }
 
-  if (!l2) {
+  const bool diamond = in & (kR3 | kL3);
+  if (!l2 && diamond) {
+    // R3 / L3 held opens RB2's switch / transform / fusion diamond (RT): its slots are picked with X / Y / B / A as
+    // placed on the pad, so the face buttons go through as they are (○ = B, the right slot, not guard).
+    out |= in & (kX | kY | kB | kA);
+  } else if (!l2) {
     // Plain buttons, BT3 → RB2.
     if (in & kX) out |= kX;     // □ melee
     if (in & kY) out |= kY;     // △ ki blast

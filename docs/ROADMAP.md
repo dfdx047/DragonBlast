@@ -141,3 +141,21 @@ Snapdragon 665 (4× A73 2,0 GHz + 4× A53), Adreno 610, Armv8.0 sem LSE, 3,6 GB,
 - Layouts padrão novos (arco em volta dos quatro botões) e `ScreenMap` para telas 20:9 e quadradas; conferido no
   Odin 2 Mini (16:9) e no RG Cube (1:1).
 - O toggle antigo "layout Nintendo no controle físico" saiu (virou o "Trocar A/B X/Y" do remapeamento).
+
+## 0.3.1 — issues do GitHub, correções do Zandatsu, botões de deslizar (2026-11-19, sem aparelho)
+- #1, #2, #4 (Poco X3 Pro, S20 FE 4G/5G): o Renut recusava o driver Qualcomm do Adreno 640/650
+  (`maxDescriptorSetUpdateAfterBindSampledImages` < 8192) e dava `_Exit(3)`. Agora `rb2_renut_app.h` desliga o Renut
+  na sessão e o jogo segue no Xenia (`rb2_render_scale` vem da altura do Renut); `files/renut_fallback.txt` com o
+  motivo aparece em Gráficos → Renderizador.
+- Desde a 0.3.0 o `NativeLibraryDir()` de `android_main.cpp` dava a pasta do libgame decifrado (`files/`): o SDK
+  procurava ali o `librexgpu-xenos*.so` (Xenia nunca abria) e o libadrenotools os hooks (drivers da aba Drivers
+  falhavam, "the driver found no GPU"). Passou a ser a pasta do `librexruntime` (dladdr num símbolo dele).
+- Renut 0210–0216 portados do Zandatsu (0029/0030+0033/0032+0036/0034/0035/0040/0041): Mali de três dígitos (tela
+  cortada), guarda de compilação (Mali-G615, PowerVR), constantes finitas (candidato da água do #3, a confirmar com
+  `swordman_renut_finite_constants` true/false), versão do driver no log. Não portados: 0042–0045 (pacing/ADPF, em
+  conflito com a 0117), GPU reset → launcher (0089ee3, precisa de trabalho na launcher).
+- Controles: `ElementKind.RADIAL` virou botão de deslizar (ação segurada + ↑ → ↓ ← + toque, `HelperEngine.swipe*`,
+  ação segurada 150 ms antes da direção). Layouts versão 3; os de luta antigos voltam ao padrão. `bt3_controls.cpp`:
+  com R3/L3 segurado os botões passam crus (○ = B, casa da direita do losango).
+- Falta testar no aparelho: Xenia no Adreno 650 com driver do sistema, os quatro botões de deslizar em luta (tempo do
+  RT antes da casa, Ultimate por ↑), Mali-G710/G720.
