@@ -472,6 +472,8 @@
     <string name="guide_bt3_flight">R1 / R2 num botão: deslize ↑ para subir, ↓ para descer.</string>
     <string name="guide_bt3_guard">○: segure para defender. Deslize ↑ contra-ataque (○+△), ↓ vanishing (○+✕), ← sway (○+□).</string>
     <string name="renderer_fallback">Último jogo: este driver não tem o que o Renut precisa (%1$s), então o jogo rodou no Xenia. Um driver Turnip da aba Drivers (Adreno 6xx: Mr. Purple) traz o Renut de volta.</string>
+    <string name="renut_use_turnip">Renderizador nativo (Renut): use um driver Turnip. O driver do próprio Adreno pode fechar o jogo ou deixá-lo mais lento; baixe o Turnip na aba Drivers (Mr. Purple é o mais seguro).</string>
+    <string name="renut_open_drivers">Abrir Drivers</string>
     <string name="iso_err_open">Não deu para abrir o arquivo escolhido.</string>
     <string name="iso_err_not_xbox">Isto não é uma imagem de disco de Xbox 360 (sem sistema de arquivos XDVDFS).</string>
     <string name="iso_err_incomplete">A imagem do disco está incompleta (%1$s passa do fim do arquivo). Copie ou extraia o disco de novo.</string>

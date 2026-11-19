@@ -183,7 +183,7 @@ private fun Page(tab: LauncherTab, vm: LauncherViewModel, goTo: (LauncherTab) ->
         Box(Modifier.fillMaxSize()) {
             when (t) {
                 LauncherTab.HOME -> HomeScreen(vm, goTo)
-                LauncherTab.GRAPHICS -> GraphicsScreen(vm)
+                LauncherTab.GRAPHICS -> GraphicsScreen(vm) { goTo(LauncherTab.DRIVERS) }
                 LauncherTab.CONTROLS -> ControlsScreen(vm)
                 LauncherTab.MORE -> MoreScreen(goTo)
                 LauncherTab.DRIVERS -> SubPage(LauncherTab.DRIVERS, goTo) { DriversScreen(vm) }

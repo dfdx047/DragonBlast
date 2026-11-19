@@ -473,6 +473,8 @@
     <string name="guide_bt3_flight">R1 / R2 in one button: slide ↑ to fly up, ↓ to fly down.</string>
     <string name="guide_bt3_guard">○: hold to block. Slide ↑ counter (○+△), ↓ vanishing (○+✕), ← sway (○+□).</string>
     <string name="renderer_fallback">Last game: this driver lacks what the Renut needs (%1$s), so the game ran on Xenia. A Turnip driver from the Drivers tab (Adreno 6xx: Mr. Purple) brings the Renut back.</string>
+    <string name="renut_use_turnip">Native renderer (Renut): use a Turnip driver. The Adreno\'s own driver can close the game or run it slower; download Turnip in the Drivers tab (Mr. Purple is the safest pick).</string>
+    <string name="renut_open_drivers">Open Drivers</string>
     <string name="iso_err_open">Could not open the selected file.</string>
     <string name="iso_err_not_xbox">This is not an Xbox 360 disc image (no XDVDFS file system found).</string>
     <string name="iso_err_incomplete">The disc image is incomplete (%1$s ends past the end of the file). Copy or dump the disc again.</string>

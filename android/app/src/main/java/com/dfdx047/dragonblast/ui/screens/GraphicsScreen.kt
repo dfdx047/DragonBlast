@@ -35,7 +35,7 @@ import com.dfdx047.dragonblast.ui.components.Level
 import com.dfdx047.dragonblast.ui.components.StatusLine
 
 @Composable
-fun GraphicsScreen(vm: LauncherViewModel) {
+fun GraphicsScreen(vm: LauncherViewModel, openDrivers: () -> Unit = {}) {
     val s = vm.settings
     CardsPage {
         SectionCard(stringResource(R.string.gfx_render), Icons.Outlined.Wallpaper) {
@@ -55,6 +55,18 @@ fun GraphicsScreen(vm: LauncherViewModel) {
                     java.io.File(com.dfdx047.dragonblast.data.AppPaths.root, "renut_fallback.txt").takeIf { it.isFile }?.readText()?.trim()
                 }.getOrNull()
                 if (!fallback.isNullOrEmpty()) StatusLine(stringResource(R.string.renderer_fallback, fallback), Level.WARN)
+                // Adreno without a Turnip from the Drivers tab: the stock Qualcomm driver lacks what the Renut needs on
+                // the 6xx (issues #1, #2, #4) and is the less tested path on the others. Turnip only exists for Adreno.
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val adreno = vm.gpu?.vendor == com.dfdx047.dragonblast.data.GpuVendor.ADRENO
+                val customDriver = com.dfdx047.dragonblast.drivers.DriverStore.choice(context) ==
+                    com.dfdx047.dragonblast.drivers.DriverStore.CHOICE_CUSTOM
+                if (adreno && !customDriver && !com.dfdx047.dragonblast.drivers.DriverStore.hasBundledTurnip(context)) {
+                    StatusLine(stringResource(R.string.renut_use_turnip), Level.WARN)
+                    androidx.compose.material3.TextButton(onClick = openDrivers) {
+                        androidx.compose.material3.Text(stringResource(R.string.renut_open_drivers))
+                    }
+                }
             }
             Divider()
             // Renut: 360p to 4K; Xenia: up to the game's 720p.

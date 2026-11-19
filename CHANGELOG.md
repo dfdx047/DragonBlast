@@ -20,6 +20,7 @@ Not tested on a device yet (none was free): built and checked on the PC only.
     Zandatsu). May also fix the missing water on Adreno (#3), still to confirm.
   - The log names the Vulkan driver and its version.
 - **Xenia:** occlusion queries off outside Adreno (the Mali-G57 driver crashes in them).
+- **Graphics → Renderer:** on Adreno without a Turnip driver, a warning says to use Turnip for the Renut, with a button to the Drivers tab.
 - **Touch controls: swipe buttons.** Fewer buttons on screen: touch, slide towards a direction, lift.
   - Transform: holds RT (Tenkaichi 3: R3) and the slide picks the diamond slot (↑ Y/△, → B/○, ↓ A/✕, ← X/□).
   - Super Attacks (Tenkaichi 3: L2 + △): tap = Super Attack 1, slide ↑ = Ultimate, → / ↓ / ← = Super Attacks 2, 3, 4.
